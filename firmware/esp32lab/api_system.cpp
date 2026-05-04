@@ -3,6 +3,8 @@
 #include "api_system.h"
 #include <WiFi.h>
 
+extern bool gStaMode;
+
 void setupSystemApi() {
     apiServer.http().on("/api/system/info", HTTP_GET, [](AsyncWebServerRequest* req) {
         ApiServer::restRequestCount++;
@@ -26,9 +28,17 @@ void setupSystemApi() {
         doc["flash"]["size"]  = ESP.getFlashChipSize();
         doc["flash"]["speed"] = ESP.getFlashChipSpeed();
 
-        doc["wifi"]["ssid"]    = WIFI_AP_SSID;
-        doc["wifi"]["ip"]      = WiFi.softAPIP().toString();
-        doc["wifi"]["clients"] = WiFi.softAPgetStationNum();
+        if (gStaMode) {
+            doc["wifi"]["mode"]    = "station";
+            doc["wifi"]["ssid"]    = WiFi.SSID();
+            doc["wifi"]["ip"]      = WiFi.localIP().toString();
+            doc["wifi"]["rssi"]    = WiFi.RSSI();
+        } else {
+            doc["wifi"]["mode"]    = "hotspot";
+            doc["wifi"]["ssid"]    = WIFI_AP_SSID;
+            doc["wifi"]["ip"]      = WiFi.softAPIP().toString();
+            doc["wifi"]["clients"] = WiFi.softAPgetStationNum();
+        }
 
         doc["ws_clients"] = apiServer.wsClientCount();
 

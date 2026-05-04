@@ -60,6 +60,50 @@ If it does not connect, check that you are still on the ESP32Lab WiFi network an
 
 ---
 
+### Step 4 (optional): Connecting to your home network
+
+The default setup has the ESP32 acting as its own WiFi hotspot. This is the simplest way to get started — it works anywhere, with no router needed.
+
+Once you are comfortable with it, you can switch the ESP32 to join your home or school WiFi instead. This means:
+
+- You stay connected to your normal WiFi — no switching back and forth
+- Anyone else on the same network can open the interface too
+- The ESP32 can sit on your desk permanently, always accessible
+- You can reach it from a phone, tablet, and laptop at the same time
+
+**How to switch:**
+
+This requires editing the firmware configuration and reflashing (see Part 5 — For Researchers for the full build process).
+
+Open `firmware/esp32lab/config.h` and make two changes:
+
+```cpp
+// 1. Change the mode
+#define WIFI_MODE      WIFI_MODE_STA   // was WIFI_MODE_AP
+
+// 2. Fill in your network details
+#define WIFI_STA_SSID      "YourNetworkName"
+#define WIFI_STA_PASSWORD  "YourPassword"
+```
+
+Rebuild and reflash. The ESP32 will now connect to your network on startup instead of creating its own hotspot.
+
+**How to reach it:**
+
+Once connected to your network, open a browser on any device on the same WiFi and go to:
+
+**http://esp32lab.local**
+
+This works on most devices without needing to know the IP address. If it does not work (some Android devices and older routers do not support mDNS), check your router's device list for a device named `esp32lab` and use its IP address directly.
+
+**What happens if it can't connect:**
+
+If the ESP32 cannot find your network (wrong password, router out of range, network temporarily down), it automatically falls back to hotspot mode — the `ESP32Lab` hotspot will appear as normal. You will not be locked out. Fix the credentials in `config.h`, reflash, and try again.
+
+> **Tip:** In station mode the System tab shows the signal strength (RSSI) of the connection to your router. A value above −70 dBm is reliable; below −80 dBm you may get dropouts.
+
+---
+
 ## Part 2 — The Interface
 
 The interface has three tabs:

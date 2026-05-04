@@ -4,11 +4,28 @@
 // ESP32 Lab — Configuration
 // ============================================================================
 
-// --- WiFi Access Point ---
+// --- WiFi Mode ---
+// WIFI_MODE_AP  : ESP32 creates its own hotspot. Connect your device to it.
+//                 Works anywhere — no router needed.
+// WIFI_MODE_STA : ESP32 joins your existing WiFi network.
+//                 Accessible from any device on that network.
+//                 Falls back to AP mode automatically if connection fails.
+#define WIFI_MODE_AP   0
+#define WIFI_MODE_STA  1
+
+#define WIFI_MODE      WIFI_MODE_AP   // <-- change to WIFI_MODE_STA to join your network
+
+// --- Hotspot (AP mode) ---
 #define WIFI_AP_SSID       "ESP32Lab"
 #define WIFI_AP_PASSWORD   "esp32lab"    // min 8 chars
 #define WIFI_AP_CHANNEL    1
 #define WIFI_AP_MAX_CONN   4
+
+// --- Home/School Network (STA mode) ---
+// Fill these in before switching to WIFI_MODE_STA
+#define WIFI_STA_SSID      "YourNetworkName"
+#define WIFI_STA_PASSWORD  "YourPassword"
+#define WIFI_STA_TIMEOUT_S 20              // seconds to wait before giving up
 
 // --- HTTP Server ---
 #define HTTP_PORT          80
@@ -35,7 +52,7 @@ static const int RESERVED_PINS[] = {
 #define RESERVED_PIN_COUNT (sizeof(RESERVED_PINS) / sizeof(RESERVED_PINS[0]))
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION   "1.0.0"
+#define FIRMWARE_VERSION   "1.1.0"
 
 // --- mDNS ---
 #define MDNS_HOSTNAME      "esp32lab"
