@@ -1,0 +1,12 @@
+# Build output
+firmware/build/
+
+# Arduino CLI cache
+.arduino*/
+
+# Claude Code
+.claude/
+
+# Windows
+Thumbs.db
+Desktop.ini

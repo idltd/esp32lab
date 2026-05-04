@@ -1,0 +1,10 @@
+{
+    "name": "ESP32 Lab",
+    "short_name": "ESP32Lab",
+    "description": "Browser sensor control for ESP32",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#38bdf8",
+    "icons": []
+}

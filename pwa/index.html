@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#38bdf8">
+    <title>ESP32 Lab</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="connection-bar">
+        <div class="conn-row">
+            <input type="text" id="ip-input" value="192.168.4.1" placeholder="IP address">
+            <button id="connect-btn">Connect</button>
+            <span id="status-dot" class="dot disconnected"></span>
+            <span id="status-text">Disconnected</span>
+        </div>
+        <div id="sys-summary" class="hidden"></div>
+    </div>
+    <nav id="tab-bar" role="tablist">
+        <button class="tab active" data-tab="system" role="tab">System</button>
+        <button class="tab" data-tab="gpio" role="tab">GPIO</button>
+        <button class="tab" data-tab="grove" role="tab">Sensors</button>
+    </nav>
+    <main id="tab-content">
+        <section id="tab-system" class="tab-panel active" role="tabpanel"></section>
+        <section id="tab-gpio"   class="tab-panel" role="tabpanel"></section>
+        <section id="tab-grove"  class="tab-panel" role="tabpanel"></section>
+    </main>
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

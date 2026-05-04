@@ -1,0 +1,292 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --accent: #38bdf8;
+    --accent-dim: #0ea5e9;
+    --green: #4ade80;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+}
+
+html, body {
+    height: 100%; width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+}
+
+/* Connection Bar */
+#connection-bar {
+    background: var(--surface);
+    border-bottom: 2px solid var(--accent);
+    padding: 10px 14px;
+}
+
+.conn-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#ip-input {
+    flex: 1;
+    max-width: 160px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    font-family: monospace;
+}
+
+#connect-btn {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+}
+#connect-btn:active { opacity: 0.8; }
+#connect-btn.connected { background: var(--red); color: #fff; }
+
+.dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+.dot.disconnected { background: var(--red); }
+.dot.connected    { background: var(--green); box-shadow: 0 0 8px var(--green); }
+.dot.connecting   { background: var(--yellow); animation: pulse 1s infinite; }
+
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+#status-text {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+#sys-summary {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 5px;
+    font-family: monospace;
+}
+
+.hidden { display: none !important; }
+
+/* Tab Bar */
+#tab-bar {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.tab {
+    flex: 1;
+    padding: 13px 8px;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    letter-spacing: 0.2px;
+}
+.tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+/* Tab Content */
+body { display: flex; flex-direction: column; }
+
+#tab-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tab-panel { display: none; padding: 14px; }
+.tab-panel.active { display: block; }
+
+/* Cards */
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+}
+.card h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+/* Key-Value rows */
+.kv {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 14px;
+    border-bottom: 1px solid var(--surface2);
+}
+.kv:last-child { border-bottom: none; }
+.kv .label { color: var(--text-dim); }
+.kv .value { font-family: monospace; color: var(--text); }
+
+/* Progress bars */
+.bar-wrap {
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 6px 0 4px;
+}
+.bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent);
+    transition: width 0.3s;
+}
+.bar-fill.warn   { background: var(--yellow); }
+.bar-fill.danger { background: var(--red); }
+
+/* Form elements */
+.form-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.form-row label {
+    font-size: 13px;
+    color: var(--text-dim);
+    min-width: 50px;
+}
+
+input[type="text"], input[type="number"], select {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 14px;
+    font-family: monospace;
+    min-width: 0;
+}
+
+input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+}
+
+button {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #0f172a;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+button:active { opacity: 0.8; }
+button.secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    font-weight: 600;
+}
+button.danger { background: var(--red); color: #fff; }
+
+/* Log */
+.log {
+    max-height: 240px;
+    overflow-y: auto;
+    font-size: 13px;
+    font-family: monospace;
+}
+.log-entry {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--surface2);
+    line-height: 1.4;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-time { color: var(--text-dim); margin-right: 8px; }
+
+/* Toggle buttons */
+.toggle-group {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+}
+.toggle-group button {
+    border-radius: 0;
+    border: none;
+    background: var(--surface2);
+    color: var(--text-dim);
+    padding: 9px 16px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.toggle-group button.active {
+    background: var(--accent);
+    color: #0f172a;
+}
+
+/* Wiring guide */
+.wiring-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 8px 0;
+}
+.wiring-table th {
+    text-align: left;
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+}
+.wiring-table td {
+    padding: 7px 8px;
+    border-bottom: 1px solid var(--surface2);
+    font-family: monospace;
+}
+.wiring-table tr:last-child td { border-bottom: none; }
+.pin-sensor { color: var(--yellow); }
+.pin-esp32  { color: var(--green); }
+
+.wiring-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: 6px;
+    line-height: 1.6;
+}
