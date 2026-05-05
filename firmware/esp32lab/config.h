@@ -52,7 +52,7 @@ static const int RESERVED_PINS[] = {
 #define RESERVED_PIN_COUNT (sizeof(RESERVED_PINS) / sizeof(RESERVED_PINS[0]))
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION   "1.1.0"
+#define FIRMWARE_VERSION   "1.2.0"
 
 // --- mDNS ---
 #define MDNS_HOSTNAME      "esp32lab"

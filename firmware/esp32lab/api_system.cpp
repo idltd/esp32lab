@@ -22,6 +22,7 @@ void setupSystemApi() {
         doc["psram"]["free"]  = ESP.getFreePsram();
         doc["psram"]["total"] = ESP.getPsramSize();
 
+        doc["firmware"]    = FIRMWARE_VERSION;
         doc["uptime_ms"]   = millis();
         doc["sdk_version"] = ESP.getSdkVersion();
 

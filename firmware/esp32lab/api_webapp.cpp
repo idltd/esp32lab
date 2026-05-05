@@ -420,7 +420,7 @@ window.addEventListener('beforeunload', () => { if (api.connected) api.disconnec
 
 // ── js/tab-system.js ──────────────────────────────────────────────────────────
 
-static const char FILE_SYSTEM_JS[] = R"WEBEND(let panel, interval;
+static const char FILE_SYSTEM_JS[] = R"WEBEND(let panel, interval, currentApi;
 
 export function initSystem(el) {
     panel = el;
@@ -435,16 +435,35 @@ export function initSystem(el) {
         </div>
         <div class="card" id="sys-net"><h3>Network</h3><div class="kv-list"></div></div>
         <div class="card" id="sys-misc"><h3>System</h3><div class="kv-list"></div></div>
+        <div class="card">
+            <h3>Firmware Update</h3>
+            <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">
+                Running: <span id="ota-current" style="color:var(--text);font-family:monospace">--</span>
+                &nbsp;&mdash;&nbsp;upload a new .bin to update over WiFi.
+            </div>
+            <div class="form-row">
+                <input type="file" id="ota-file" accept=".bin" style="flex:1;font-size:13px;min-width:0">
+                <button id="ota-btn" class="secondary">Upload</button>
+            </div>
+            <div id="ota-progress" style="display:none;margin-top:10px">
+                <div class="bar-wrap"><div class="bar-fill" id="ota-bar" style="width:0%"></div></div>
+                <div id="ota-msg" style="font-size:13px;color:var(--text-dim);margin-top:6px"></div>
+            </div>
+        </div>
     `;
+
+    panel.querySelector('#ota-btn').onclick = startOta;
 }
 
 export function activateSystem(api) {
+    currentApi = api;
     refresh(api);
     interval = setInterval(() => refresh(api), 5000);
 }
 
 export function deactivateSystem() {
     if (interval) { clearInterval(interval); interval = null; }
+    currentApi = null;
 }
 
 function refresh(api) {
@@ -488,6 +507,54 @@ function render(d) {
         ['Flash',       fmt(d.flash?.size)],
         ['Flash Speed', fmt(d.flash?.speed) + 'Hz'],
     ]);
+
+    const otaVer = panel.querySelector('#ota-current');
+    if (otaVer && d.firmware) otaVer.textContent = 'v' + d.firmware;
+}
+
+function startOta() {
+    if (!currentApi) return;
+    const file = panel.querySelector('#ota-file').files[0];
+    if (!file) return;
+
+    const bar = panel.querySelector('#ota-bar');
+    const msg = panel.querySelector('#ota-msg');
+    const btn = panel.querySelector('#ota-btn');
+    panel.querySelector('#ota-progress').style.display = 'block';
+    bar.style.width = '0%';
+    bar.className = 'bar-fill';
+    msg.textContent = 'Uploading...';
+    btn.disabled = true;
+
+    const form = new FormData();
+    form.append('firmware', file, file.name);
+    const xhr = new XMLHttpRequest();
+
+    xhr.upload.onprogress = e => {
+        if (e.lengthComputable) {
+            const pct = Math.round(e.loaded / e.total * 100);
+            bar.style.width = pct + '%';
+            msg.textContent = 'Uploading... ' + pct + '%';
+        }
+    };
+    xhr.onload = () => {
+        btn.disabled = false;
+        if (xhr.status === 200) {
+            bar.style.width = '100%';
+            msg.textContent = 'Update complete — device is rebooting. Reconnect in a few seconds.';
+        } else {
+            bar.className = 'bar-fill danger';
+            try { msg.textContent = 'Failed: ' + JSON.parse(xhr.responseText).error; }
+            catch(e) { msg.textContent = 'Update failed.'; }
+        }
+    };
+    xhr.onerror = () => {
+        btn.disabled = false;
+        bar.style.width = '100%';
+        msg.textContent = 'Update complete — device is rebooting. Reconnect in a few seconds.';
+    };
+    xhr.open('POST', 'http://' + currentApi.ip + '/api/system/update');
+    xhr.send(form);
 }
 
 function setKvList(selector, pairs) {

@@ -25,6 +25,7 @@
 #include "api_system.h"
 #include "api_gpio.h"
 #include "api_grove.h"
+#include "api_ota.h"
 
 // Exposed so api_system can report the correct IP and mode
 bool gStaMode = false;
@@ -77,6 +78,7 @@ void setup() {
     setupSystemApi();
     setupGpioApi();
     setupGroveApi();
+    setupOtaApi();
 
     apiServer.begin();
 
