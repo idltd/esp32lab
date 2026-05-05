@@ -849,7 +849,7 @@ function startStream() {
 function stopStream() {
     if (sse) { sse.close(); sse = null; }
     const btn = panel.querySelector('#grove-stream-btn');
-    if (btn) { btn.textContent = '&#9654; Stream'; btn.classList.add('secondary'); }
+    if (btn) { btn.textContent = '▶ Stream'; btn.classList.add('secondary'); }
 }
 
 function renderReading(r) {
