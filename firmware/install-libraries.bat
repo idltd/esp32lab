@@ -7,7 +7,7 @@ echo.
 
 :: Core libraries (available in Library Manager)
 arduino-cli lib install "ArduinoJson"
-arduino-cli lib install "DHTesp"
+arduino-cli lib install "DHT sensor library for ESPx"
 arduino-cli lib install "OneWire"
 arduino-cli lib install "DallasTemperature"
 
