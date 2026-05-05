@@ -834,7 +834,7 @@ function showOutputControls(id) {
 function startStream() {
     if (!currentApi || sse) return;
     const btn = panel.querySelector('#grove-stream-btn');
-    btn.textContent = '&#9646; Stop';
+    btn.textContent = '■ Stop';
     btn.classList.remove('secondary');
     sse = new EventSource(`http://${currentApi.ip}/api/grove/stream`);
     sse.addEventListener('reading', e => {
