@@ -15,7 +15,7 @@ static const char FILE_INDEX[] = R"WEBEND(<!DOCTYPE html>
     <meta name="theme-color" content="#38bdf8">
     <title>ESP32 Lab</title>
     <link rel="manifest" href="manifest.json">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v={{VER}}">
 </head>
 <body>
     <div id="connection-bar">
@@ -37,7 +37,7 @@ static const char FILE_INDEX[] = R"WEBEND(<!DOCTYPE html>
         <section id="tab-gpio"   class="tab-panel" role="tabpanel"></section>
         <section id="tab-grove"  class="tab-panel" role="tabpanel"></section>
     </main>
-    <script type="module" src="js/app.js"></script>
+    <script type="module" src="js/app.js?v={{VER}}"></script>
 </body>
 </html>
 )WEBEND";
@@ -435,6 +435,37 @@ export function initSystem(el) {
         </div>
         <div class="card" id="sys-net"><h3>Network</h3><div class="kv-list"></div></div>
         <div class="card" id="sys-misc"><h3>System</h3><div class="kv-list"></div></div>
+        <div class="card" id="sys-device">
+            <h3>Device</h3>
+            <div class="form-row">
+                <label>Name</label>
+                <input type="text" id="device-name-input" style="flex:1" placeholder="esp32lab">
+                <button id="device-rename-btn" class="secondary">Rename</button>
+            </div>
+            <div class="form-row" style="margin-top:4px">
+                <button id="identify-btn">Identify (Blink LED)</button>
+            </div>
+            <div id="device-hint" style="font-size:12px;color:var(--text-dim);margin-top:8px;display:none"></div>
+        </div>
+        <div class="card">
+            <h3>WiFi Configuration</h3>
+            <div id="wifi-status" style="font-size:13px;margin-bottom:12px;color:var(--text-dim)">Loading...</div>
+            <div class="form-row">
+                <label>Network</label>
+                <input type="text" id="wifi-ssid" placeholder="Network name (SSID)" style="flex:1">
+                <button id="wifi-scan-btn" class="secondary">Scan</button>
+            </div>
+            <div id="wifi-scan-results" style="display:none;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;max-height:200px;overflow-y:auto"></div>
+            <div class="form-row">
+                <label>Password</label>
+                <input type="password" id="wifi-pass" placeholder="Password" style="flex:1">
+            </div>
+            <div class="form-row">
+                <button id="wifi-connect-btn">Connect to Network</button>
+                <button id="wifi-forget-btn" class="secondary" style="display:none">Forget WiFi</button>
+            </div>
+            <div id="wifi-hint" style="font-size:12px;color:var(--text-dim);margin-top:8px;display:none;line-height:1.5"></div>
+        </div>
         <div class="card">
             <h3>Firmware Update</h3>
             <div style="font-size:13px;color:var(--text-dim);margin-bottom:12px">
@@ -452,12 +483,18 @@ export function initSystem(el) {
         </div>
     `;
 
+    panel.querySelector('#identify-btn').onclick = identifyDevice;
+    panel.querySelector('#device-rename-btn').onclick = renameDevice;
     panel.querySelector('#ota-btn').onclick = startOta;
+    panel.querySelector('#wifi-scan-btn').onclick = scanWifi;
+    panel.querySelector('#wifi-connect-btn').onclick = connectWifi;
+    panel.querySelector('#wifi-forget-btn').onclick = forgetWifi;
 }
 
 export function activateSystem(api) {
     currentApi = api;
     refresh(api);
+    loadWifiConfig();
     interval = setInterval(() => refresh(api), 5000);
 }
 
@@ -510,6 +547,145 @@ function render(d) {
 
     const otaVer = panel.querySelector('#ota-current');
     if (otaVer && d.firmware) otaVer.textContent = 'v' + d.firmware;
+
+    const nameIn = panel.querySelector('#device-name-input');
+    if (nameIn && d.name && !nameIn.value) nameIn.value = d.name;
+}
+
+function identifyDevice() {
+    if (!currentApi) return;
+    const btn = panel.querySelector('#identify-btn');
+    btn.disabled = true;
+    fetch('http://' + currentApi.ip + '/api/system/identify', {method: 'POST'})
+        .finally(() => { btn.disabled = false; });
+}
+
+function renameDevice() {
+    if (!currentApi) return;
+    const name = panel.querySelector('#device-name-input').value.trim();
+    if (!name) { alert('Please enter a device name.'); return; }
+    const hint = panel.querySelector('#device-hint');
+    const btn  = panel.querySelector('#device-rename-btn');
+    btn.disabled = true;
+    hint.style.display = 'block';
+    hint.textContent = 'Saving and restarting…';
+    fetch('http://' + currentApi.ip + '/api/system/name', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({name: name})
+    }).then(() => {
+        hint.textContent = 'Device restarting. Reconnect at http://' + name + '.local/';
+    }).catch(() => {
+        hint.textContent = 'Device restarting. Reconnect at http://' + name + '.local/';
+    });
+}
+
+function scanWifi() {
+    if (!currentApi) return;
+    const btn  = panel.querySelector('#wifi-scan-btn');
+    const list = panel.querySelector('#wifi-scan-results');
+    btn.disabled = true;
+    btn.textContent = 'Scanning…';
+    list.style.display = 'none';
+    list.innerHTML = '';
+
+    function poll() {
+        fetch('http://' + currentApi.ip + '/api/wifi/scan')
+            .then(r => r.status === 202 ? null : r.json())
+            .then(networks => {
+                if (!networks) { setTimeout(poll, 1500); return; }
+                btn.disabled = false;
+                btn.textContent = 'Scan';
+                if (networks.length === 0) {
+                    list.style.display = 'block';
+                    list.innerHTML = '<div style="padding:8px;font-size:13px;color:var(--text-dim)">No networks found.</div>';
+                    return;
+                }
+                list.style.display = 'block';
+                list.innerHTML = networks.map(function(n) {
+                    var sig = n.rssi > -60 ? '●●●' : n.rssi > -75 ? '●●○' : '●○○';
+                    var lock = n.secure ? ' 🔒' : '';
+                    var ssidEsc = n.ssid.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+                    return '<div class="wifi-net" data-ssid="' + ssidEsc + '"' +
+                        ' style="padding:8px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:13px;border-bottom:1px solid var(--border)">' +
+                        '<span>' + n.ssid + lock + '</span>' +
+                        '<span style="color:var(--text-dim);font-size:11px;white-space:nowrap;margin-left:8px">' + sig + ' ' + n.rssi + ' dBm</span>' +
+                        '</div>';
+                }).join('');
+                list.querySelectorAll('.wifi-net').forEach(function(el) {
+                    el.addEventListener('pointerover',  function() { el.style.background = 'var(--surface2)'; });
+                    el.addEventListener('pointerout',   function() { el.style.background = ''; });
+                    el.onclick = function() {
+                        panel.querySelector('#wifi-ssid').value = el.dataset.ssid;
+                        panel.querySelector('#wifi-pass').focus();
+                        list.style.display = 'none';
+                    };
+                });
+            })
+            .catch(function() { btn.disabled = false; btn.textContent = 'Scan'; });
+    }
+    poll();
+}
+
+function loadWifiConfig() {
+    if (!currentApi) return;
+    fetch('http://' + currentApi.ip + '/api/wifi/config')
+        .then(r => r.json())
+        .then(d => {
+            const status  = panel.querySelector('#wifi-status');
+            const forget  = panel.querySelector('#wifi-forget-btn');
+            const hint    = panel.querySelector('#wifi-hint');
+            const ssidIn  = panel.querySelector('#wifi-ssid');
+            if (d.mode === 'sta') {
+                status.textContent = 'Connected to "' + d.ssid + '" — ' + d.ip;
+                forget.style.display = '';
+                hint.style.display = 'none';
+            } else {
+                status.textContent = 'Hotspot mode — not connected to a network.';
+                forget.style.display = 'none';
+                if (d.saved_ssid) {
+                    hint.style.display = 'block';
+                    hint.textContent = 'Last saved network "' + d.saved_ssid + '" was unreachable.';
+                }
+            }
+            if (d.saved_ssid && !ssidIn.value) ssidIn.value = d.saved_ssid;
+        })
+        .catch(() => {
+            const status = panel.querySelector('#wifi-status');
+            if (status) status.textContent = 'Unable to load WiFi status.';
+        });
+}
+
+function connectWifi() {
+    if (!currentApi) return;
+    const ssid = panel.querySelector('#wifi-ssid').value.trim();
+    const pass = panel.querySelector('#wifi-pass').value;
+    if (!ssid) { alert('Please enter a network name.'); return; }
+    const btn  = panel.querySelector('#wifi-connect-btn');
+    const hint = panel.querySelector('#wifi-hint');
+    btn.disabled = true;
+    hint.style.display = 'block';
+    hint.textContent = 'Saving credentials and restarting…';
+    fetch('http://' + currentApi.ip + '/api/wifi/connect', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ssid: ssid, password: pass})
+    }).then(() => {
+        hint.textContent = 'Device is restarting. Reconnect to your WiFi network and browse to http://esp32lab.local/';
+    }).catch(() => {
+        hint.textContent = 'Device is restarting. Reconnect to your WiFi network and browse to http://esp32lab.local/';
+    });
+}
+
+function forgetWifi() {
+    if (!currentApi) return;
+    if (!confirm('Forget saved network? The device will restart in hotspot mode.')) return;
+    const hint = panel.querySelector('#wifi-hint');
+    hint.style.display = 'block';
+    hint.textContent = 'Clearing credentials and restarting…';
+    fetch('http://' + currentApi.ip + '/api/wifi/forget', {method: 'POST'})
+        .then(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "ESP32Lab" WiFi network.'; })
+        .catch(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "ESP32Lab" WiFi network.'; });
 }
 
 function startOta() {
@@ -583,8 +759,9 @@ export function initGpio(el) {
         <div class="card">
             <h3>GPIO Control</h3>
             <div class="wiring-note" style="margin-bottom:12px">
-                Safe pins on a standard ESP32 DevKit: 4, 5, 13, 14, 16&ndash;27, 32&ndash;33.
-                Input-only (no output): 34&ndash;39. Avoid 0, 1, 2, 3, 6&ndash;12, 15.
+                Safe pins on ESP32 DevKit: 13, 14, 16&ndash;27, 32&ndash;33.
+                Grove port uses 4 (D) and 5 (D2) &mdash; use the Sensor tab for those.
+                Avoid 0, 2, 12, 15 (strapping), 1, 3 (UART), 6&ndash;11 (flash).
             </div>
             <div class="form-row">
                 <label>Pin</label>
@@ -982,23 +1159,32 @@ static const char FILE_MANIFEST[] = R"WEBEND({
 
 // ── Route registration ────────────────────────────────────────────────────────
 
+static void sendCached(AsyncWebServerRequest* r, const char* mime, const char* body) {
+    auto res = r->beginResponse(200, mime, body);
+    res->addHeader("Cache-Control", "public, max-age=86400");
+    r->send(res);
+}
+
 void setupWebApp() {
-    apiServer.http().on("/", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "text/html",              FILE_INDEX);     });
-    apiServer.http().on("/css/style.css", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "text/css",               FILE_STYLE_CSS); });
-    apiServer.http().on("/js/api.js", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "application/javascript", FILE_API_JS);    });
-    apiServer.http().on("/js/app.js", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "application/javascript", FILE_APP_JS);    });
+    apiServer.http().on("/", HTTP_GET, [](AsyncWebServerRequest* r){
+        String html(FILE_INDEX);
+        html.replace("{{VER}}", FIRMWARE_VERSION);
+        r->send(200, "text/html", html);
+    });
+    apiServer.http().on("/css/style.css",    HTTP_GET,
+        [](AsyncWebServerRequest* r){ sendCached(r, "text/css",               FILE_STYLE_CSS); });
+    apiServer.http().on("/js/api.js",        HTTP_GET,
+        [](AsyncWebServerRequest* r){ sendCached(r, "application/javascript", FILE_API_JS);    });
+    apiServer.http().on("/js/app.js",        HTTP_GET,
+        [](AsyncWebServerRequest* r){ sendCached(r, "application/javascript", FILE_APP_JS);    });
     apiServer.http().on("/js/tab-system.js", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "application/javascript", FILE_SYSTEM_JS); });
-    apiServer.http().on("/js/tab-gpio.js", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "application/javascript", FILE_GPIO_JS);   });
-    apiServer.http().on("/js/tab-grove.js", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "application/javascript", FILE_GROVE_JS);  });
-    apiServer.http().on("/manifest.json", HTTP_GET,
-        [](AsyncWebServerRequest* r){ r->send(200, "application/json",       FILE_MANIFEST);  });
+        [](AsyncWebServerRequest* r){ sendCached(r, "application/javascript", FILE_SYSTEM_JS); });
+    apiServer.http().on("/js/tab-gpio.js",   HTTP_GET,
+        [](AsyncWebServerRequest* r){ sendCached(r, "application/javascript", FILE_GPIO_JS);   });
+    apiServer.http().on("/js/tab-grove.js",  HTTP_GET,
+        [](AsyncWebServerRequest* r){ sendCached(r, "application/javascript", FILE_GROVE_JS);  });
+    apiServer.http().on("/manifest.json",    HTTP_GET,
+        [](AsyncWebServerRequest* r){ sendCached(r, "application/json",       FILE_MANIFEST);  });
 
     Serial.println("[API] Web app routes registered");
 }

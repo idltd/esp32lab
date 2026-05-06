@@ -1,37 +1,24 @@
 #pragma once
 
 // ============================================================================
-// ESP32 Lab — Configuration
+// ESP32 Lab — Configuration (ESP32 DevKit)
 // ============================================================================
 
-// --- WiFi Mode ---
-// WIFI_MODE_AP  : ESP32 creates its own hotspot. Connect your device to it.
-//                 Works anywhere — no router needed.
-// WIFI_MODE_STA : ESP32 joins your existing WiFi network.
-//                 Accessible from any device on that network.
-//                 Falls back to AP mode automatically if connection fails.
-#define WIFI_MODE_AP   0
-#define WIFI_MODE_STA  1
-
-#define WIFI_MODE      WIFI_MODE_AP   // <-- change to WIFI_MODE_STA to join your network
-
 // --- Hotspot (AP mode) ---
+// Used when no WiFi credentials are saved, or saved credentials fail.
 #define WIFI_AP_SSID       "ESP32Lab"
 #define WIFI_AP_PASSWORD   "esp32lab"    // min 8 chars
 #define WIFI_AP_CHANNEL    1
 #define WIFI_AP_MAX_CONN   4
 
-// --- Home/School Network (STA mode) ---
-// Fill these in before switching to WIFI_MODE_STA
-#define WIFI_STA_SSID      "YourNetworkName"
-#define WIFI_STA_PASSWORD  "YourPassword"
-#define WIFI_STA_TIMEOUT_S 20              // seconds to wait before giving up
+// --- Station mode ---
+// How long to wait for a saved network before falling back to AP.
+#define WIFI_STA_TIMEOUT_S 20
 
 // --- HTTP Server ---
 #define HTTP_PORT          80
 
 // --- Grove / Sensor Port ---
-// Default pins for a generic ESP32 DevKit. Change these to match your wiring.
 #define GROVE_D_PIN    4    // Primary data / signal pin   (yellow wire on Grove)
 #define GROVE_D2_PIN   5    // Secondary data pin           (white wire on Grove)
                             // Used by: HC-SR04 echo, rotary encoder DT
@@ -52,7 +39,13 @@ static const int RESERVED_PINS[] = {
 #define RESERVED_PIN_COUNT (sizeof(RESERVED_PINS) / sizeof(RESERVED_PINS[0]))
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION   "1.2.0"
+#define FIRMWARE_VERSION   "1.5.0"
 
 // --- mDNS ---
 #define MDNS_HOSTNAME      "esp32lab"
+
+// --- Status LED ---
+// Pin with a built-in LED for the "Identify" blink feature.
+// ESP32 DevKit: typically GPIO 2 (active high). Set to -1 to disable.
+#define STATUS_LED_PIN     2
+#define STATUS_LED_ON      HIGH

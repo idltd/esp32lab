@@ -1,3 +1,4 @@
 #pragma once
 
-void setupSystemApi();
+void   setupSystemApi();
+String getDeviceName();   // MAC-based default, overridden by NVS "devname"

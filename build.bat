@@ -1,6 +1,6 @@
 @echo off
 setlocal
-set FQBN=esp32:esp32:esp32dev
+set FQBN=esp32:esp32:esp32
 set BOARD=esp32dev
 set BUILD_DIR=%~dp0firmware\build\%BOARD%
 set SKETCH=%~dp0firmware\esp32lab
