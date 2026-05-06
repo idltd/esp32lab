@@ -1,6 +1,9 @@
 # Build output
 firmware/build/
 
+# Release binaries (copy here manually for distribution)
+dist/
+
 # Arduino CLI cache
 .arduino*/
 
