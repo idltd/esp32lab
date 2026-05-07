@@ -1,23 +1,19 @@
 #include "config.h"
+#include "board.h"
 #include "api_server.h"
 #include "api_gpio.h"
 #include <Arduino.h>
 
-static bool pinConfigured[GPIO_MAX_PIN + 1] = {false};
-
-static bool isReservedPin(int pin) {
-    for (int i = 0; i < (int)RESERVED_PIN_COUNT; i++) {
-        if (RESERVED_PINS[i] == pin) return true;
-    }
-    return false;
-}
+static bool pinConfigured[50] = {false};
 
 static bool validatePin(AsyncWebServerRequest* req, int pin) {
-    if (pin < 0 || pin > GPIO_MAX_PIN) {
-        ApiServer::sendError(req, 400, "Invalid pin number (0-39)");
+    if (pin < 0 || pin > boardGpioMax()) {
+        char msg[32];
+        snprintf(msg, sizeof(msg), "Invalid pin (0-%d)", boardGpioMax());
+        ApiServer::sendError(req, 400, msg);
         return false;
     }
-    if (isReservedPin(pin)) {
+    if (boardPinReserved(pin)) {
         ApiServer::sendError(req, 400, "Pin is reserved (flash/UART/strapping/Grove)");
         return false;
     }
@@ -33,7 +29,7 @@ void setupGpioApi() {
             JsonDocument doc;
             doc["pin"] = pin;
             doc["value"] = digitalRead(pin);
-            doc["configured"] = pinConfigured[pin];
+            doc["configured"] = pin < 50 ? pinConfigured[pin] : false;
             String json; serializeJson(doc, json);
             ApiServer::restRequestCount++;
             req->send(200, "application/json", json);
@@ -74,7 +70,7 @@ void setupGpioApi() {
             else if (strcasecmp(mode, "input_pullup")   == 0) pinMode(pin, INPUT_PULLUP);
             else if (strcasecmp(mode, "input_pulldown") == 0) pinMode(pin, INPUT_PULLDOWN);
             else { ApiServer::sendError(req, 400, "Invalid mode"); return; }
-            pinConfigured[pin] = true;
+            if (pin < 50) pinConfigured[pin] = true;
             JsonDocument resp;
             resp["pin"] = pin; resp["mode"] = mode; resp["status"] = "configured";
             String json; serializeJson(resp, json);

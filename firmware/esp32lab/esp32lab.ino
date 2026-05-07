@@ -19,6 +19,7 @@
 #include <ESPmDNS.h>
 
 #include "config.h"
+#include "board.h"
 #include "api_server.h"
 #include "api_webapp.h"
 #include "api_system.h"
@@ -41,8 +42,10 @@ void setup() {
     delay(100);
     Serial.println("\n[ESP32 Lab] Starting up...");
 
+    boardSetup();
     gStaMode = wifiManagerSetup();
-    setupMDNS(getDeviceName());
+    String hostname = getDeviceName();
+    setupMDNS(hostname);
 
     setupWebApp();
     setupSystemApi();
@@ -55,12 +58,12 @@ void setup() {
 
     if (gStaMode) {
         Serial.printf("[ESP32 Lab] Ready! Browse to http://%s/  or  http://%s.local/\n",
-                      WiFi.localIP().toString().c_str(), getDeviceName().c_str());
+                      WiFi.localIP().toString().c_str(), hostname.c_str());
     } else {
         Serial.printf("[ESP32 Lab] Ready! Connect to WiFi '%s' (password: %s)\n",
                       WIFI_AP_SSID, WIFI_AP_PASSWORD);
         Serial.printf("[ESP32 Lab] Browse to http://%s/  or  http://%s.local/\n",
-                      WiFi.softAPIP().toString().c_str(), getDeviceName().c_str());
+                      WiFi.softAPIP().toString().c_str(), hostname.c_str());
     }
 }
 

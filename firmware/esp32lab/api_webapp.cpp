@@ -442,6 +442,11 @@ export function initSystem(el) {
                 <input type="text" id="device-name-input" style="flex:1" placeholder="esp32lab">
                 <button id="device-rename-btn" class="secondary">Rename</button>
             </div>
+            <div class="form-row">
+                <label>LED Pin</label>
+                <input type="number" id="led-pin-input" min="-1" max="48" style="width:70px" placeholder="auto">
+                <button id="led-pin-btn" class="secondary">Save</button>
+            </div>
             <div class="form-row" style="margin-top:4px">
                 <button id="identify-btn">Identify (Blink LED)</button>
             </div>
@@ -485,6 +490,7 @@ export function initSystem(el) {
 
     panel.querySelector('#identify-btn').onclick = identifyDevice;
     panel.querySelector('#device-rename-btn').onclick = renameDevice;
+    panel.querySelector('#led-pin-btn').onclick = saveLedPin;
     panel.querySelector('#ota-btn').onclick = startOta;
     panel.querySelector('#wifi-scan-btn').onclick = scanWifi;
     panel.querySelector('#wifi-connect-btn').onclick = connectWifi;
@@ -550,6 +556,12 @@ function render(d) {
 
     const nameIn = panel.querySelector('#device-name-input');
     if (nameIn && d.name && !nameIn.value) nameIn.value = d.name;
+
+    const ledIn = panel.querySelector('#led-pin-input');
+    if (ledIn && d.led_pin != null) {
+        if (d.gpio_max != null) ledIn.max = d.gpio_max;
+        if (ledIn.value === '') ledIn.value = d.led_pin;
+    }
 }
 
 function identifyDevice() {
@@ -578,6 +590,17 @@ function renameDevice() {
     }).catch(() => {
         hint.textContent = 'Device restarting. Reconnect at http://' + name + '.local/';
     });
+}
+
+function saveLedPin() {
+    if (!currentApi) return;
+    const pin = parseInt(panel.querySelector('#led-pin-input').value, 10);
+    if (isNaN(pin) || pin < -1) { alert('Enter a valid pin number (-1 to disable LED).'); return; }
+    const btn = panel.querySelector('#led-pin-btn');
+    btn.disabled = true;
+    currentApi.post('/api/system/ledpin', { pin })
+        .then(() => { btn.disabled = false; })
+        .catch(e => { alert('Error: ' + e.message); btn.disabled = false; });
 }
 
 function scanWifi() {
@@ -758,14 +781,10 @@ export function initGpio(el) {
     panel.innerHTML = `
         <div class="card">
             <h3>GPIO Control</h3>
-            <div class="wiring-note" style="margin-bottom:12px">
-                Safe pins on ESP32 DevKit: 13, 14, 16&ndash;27, 32&ndash;33.
-                Grove port uses 4 (D) and 5 (D2) &mdash; use the Sensor tab for those.
-                Avoid 0, 2, 12, 15 (strapping), 1, 3 (UART), 6&ndash;11 (flash).
-            </div>
+            <div id="gpio-safe-hint" class="wiring-note" style="margin-bottom:12px">Connect to a device to see safe pins.</div>
             <div class="form-row">
                 <label>Pin</label>
-                <input type="number" id="gpio-pin" value="13" min="0" max="39" style="width:70px">
+                <input type="number" id="gpio-pin" value="0" min="0" max="48" style="width:70px">
             </div>
             <div class="form-row">
                 <label>Mode</label>
@@ -840,7 +859,23 @@ export function initGpio(el) {
     panel.querySelector('#gpio-clear-btn').onclick = () => { gpioLog.length = 0; renderLog(); };
 }
 
-export function activateGpio(api) { currentApi = api; }
+export function activateGpio(api) {
+    currentApi = api;
+    api.get('/api/system/info').then(d => {
+        const hint  = panel.querySelector('#gpio-safe-hint');
+        const pinIn = panel.querySelector('#gpio-pin');
+        const max   = d.gpio_max ?? 39;
+        const board = d.board ?? 'ESP32';
+        const safe  = d.gpio_safe || [];
+        pinIn.max = max;
+        if (safe.length > 0) {
+            pinIn.value = safe[0];
+            hint.textContent = 'Board: ' + board + '.  Safe pins: ' + safe.join(', ') + '.';
+        } else {
+            hint.textContent = 'Board: ' + board + '.  GPIO range: 0–' + max + '.';
+        }
+    }).catch(() => {});
+}
 export function deactivateGpio() { currentApi = null; }
 
 function addLog(msg) {
