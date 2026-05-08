@@ -1,6 +1,6 @@
 # ESP32 Lab — Kit Manual
 
-**Version 1.0 draft**
+**Version 1.6.0**
 
 ---
 
@@ -71,34 +71,29 @@ Once you are comfortable with it, you can switch the ESP32 to join your home or 
 - The ESP32 can sit on your desk permanently, always accessible
 - You can reach it from a phone, tablet, and laptop at the same time
 
-**How to switch:**
+**How to switch — no reflashing needed:**
 
-This requires editing the firmware configuration and reflashing (see Part 5 — For Researchers for the full build process).
+1. Connect to the `ESP32Lab` hotspot and open the interface as normal
+2. Go to the **System** tab and scroll down to **WiFi Configuration**
+3. Click **Scan** to see nearby networks, or type your network name directly
+4. Enter your password and click **Connect to Network**
+5. The ESP32 will save the credentials and restart
 
-Open `firmware/esp32lab/config.h` and make two changes:
+**How to reach it after connecting:**
 
-```cpp
-// 1. Change the mode
-#define WIFI_MODE      WIFI_MODE_STA   // was WIFI_MODE_AP
-
-// 2. Fill in your network details
-#define WIFI_STA_SSID      "YourNetworkName"
-#define WIFI_STA_PASSWORD  "YourPassword"
-```
-
-Rebuild and reflash. The ESP32 will now connect to your network on startup instead of creating its own hotspot.
-
-**How to reach it:**
-
-Once connected to your network, open a browser on any device on the same WiFi and go to:
+Once on your network, browse to:
 
 **http://esp32lab.local**
 
-This works on most devices without needing to know the IP address. If it does not work (some Android devices and older routers do not support mDNS), check your router's device list for a device named `esp32lab` and use its IP address directly.
+This works on most devices without knowing the IP address. If it does not work (some Android devices and older routers do not support mDNS), check your router's device list for a device named `esp32lab` and use its IP address directly.
 
 **What happens if it can't connect:**
 
-If the ESP32 cannot find your network (wrong password, router out of range, network temporarily down), it automatically falls back to hotspot mode — the `ESP32Lab` hotspot will appear as normal. You will not be locked out. Fix the credentials in `config.h`, reflash, and try again.
+If the ESP32 cannot find your network (wrong password, out of range, network down), it automatically falls back to hotspot mode — the `ESP32Lab` hotspot reappears. Connect to it, go to WiFi Configuration, and try again.
+
+**Forgetting the network:**
+
+To go back to hotspot-only mode, open WiFi Configuration and click **Forget WiFi**.
 
 > **Tip:** In station mode the System tab shows the signal strength (RSSI) of the connection to your router. A value above −70 dBm is reliable; below −80 dBm you may get dropouts.
 
@@ -108,11 +103,14 @@ If the ESP32 cannot find your network (wrong password, router out of range, netw
 
 The interface has three tabs:
 
-**System** — shows information about the ESP32 board itself: chip model, memory usage, how long it has been running, and how many devices are connected to its WiFi.
+**System** — shows information about the ESP32 board: chip model, memory usage, uptime, and WiFi status. Also contains:
+- **Device** — rename the board, set the LED pin, and flash the identify LED to confirm which physical device you are talking to
+- **WiFi Configuration** — join or leave a WiFi network without reflashing
+- **Firmware Update** — upload a new `.bin` file over WiFi (OTA)
 
-**GPIO** — lets you control individual pins on the board directly. This is for more advanced experiments (see Part 4).
+**GPIO** — lets you control individual pins on the board directly. The tab shows the safe pins for your specific board automatically. See Part 4.
 
-**Sensors** — the main tab. This is where you select a sensor, follow the wiring guide, and read data from it.
+**Sensors** — the main tab. Select a sensor, follow the wiring guide, and read data from it.
 
 ---
 
@@ -240,9 +238,7 @@ The GPIO tab gives you direct control of any safe pin on the ESP32. You can set 
 
 This is lower-level than the Sensors tab — you are controlling the pin directly without any sensor logic.
 
-**Safe pins** on a standard ESP32 DevKit: 4, 5, 13, 14, 16–27, 32–33.
-
-> **Avoid** pins 0, 1, 2, 3, 6–12, and 15 — these are used for boot, USB serial, and internal flash memory.
+When you connect to a device, the tab automatically reads the board type and shows the list of safe pins for that specific board. The pin input is set to the first safe pin. Always check this list before connecting anything — reserved pins (flash, USB, strapping) are excluded automatically.
 
 ---
 
@@ -265,10 +261,12 @@ No WebSocket is used for sensors — SSE is simpler and sufficient for one-way d
 ```
 firmware/
   esp32lab/
-    esp32lab.ino      Main sketch — WiFi AP setup, module registration
-    config.h          All pin assignments, SSID, password, version
+    esp32lab.ino      Main sketch — setup, WiFi init, module registration
+    config.h          WiFi AP settings, Grove pins, firmware version
+    board.*           Runtime chip detection — GPIO limits, reserved pins, LED polarity
+    wifi_manager.*    WiFi connect/forget/scan API and NVS credential storage
     api_server.*      HTTP server wrapper (ESPAsyncWebServer)
-    api_system.*      GET /api/system/info
+    api_system.*      System info, identify, LED pin, device name, OTA update
     api_gpio.*        GET/POST /api/gpio/{pin} and /api/gpio/{pin}/mode
     api_grove.*       Sensor catalogue, readings, SSE stream
     api_webapp.*      Embeds the web app into firmware flash
@@ -279,8 +277,8 @@ pwa/
   css/style.css       All styling
   js/api.js           HTTP wrapper (fetch-based)
   js/app.js           Tab manager, connection logic
-  js/tab-system.js    System info tab
-  js/tab-gpio.js      GPIO tab
+  js/tab-system.js    System info, WiFi config, OTA, device settings
+  js/tab-gpio.js      GPIO tab (dynamic board-aware pin list)
   js/tab-grove.js     Sensors tab (wiring guides, streaming)
 ```
 
@@ -290,7 +288,15 @@ All endpoints are available at `http://192.168.4.1`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/system/info` | Chip, memory, WiFi, uptime |
+| GET | `/api/system/info` | Chip, memory, WiFi, uptime, board, safe GPIO list |
+| POST | `/api/system/identify` | Blink the LED to identify the device |
+| POST | `/api/system/ledpin` | Set LED GPIO `{"pin": 2}` (persisted, no restart) |
+| POST | `/api/system/name` | Set device name `{"name": "mydevice"}` (restarts) |
+| POST | `/api/system/update` | OTA firmware update (multipart `.bin` upload) |
+| GET | `/api/wifi/config` | Current WiFi mode, SSID, IP, saved SSID |
+| POST | `/api/wifi/connect` | Join network `{"ssid": "x", "password": "y"}` (restarts) |
+| POST | `/api/wifi/forget` | Clear saved credentials and restart in hotspot mode |
+| GET | `/api/wifi/scan` | Async scan — returns 202 while scanning, then array of networks |
 | GET | `/api/gpio/{pin}` | Read a pin |
 | POST | `/api/gpio/{pin}` | Write a pin `{"value": 0}` or `{"value": 1}` |
 | POST | `/api/gpio/{pin}/mode` | Set mode `{"mode": "input"}` etc. |
@@ -336,7 +342,9 @@ Any GPIO number valid for your board can be used. Rebuild and reflash after chan
 
 ### Changing WiFi credentials
 
-Also in `config.h`:
+Use the **WiFi Configuration** card in the System tab — no reflashing needed. Credentials are stored in NVS (non-volatile storage) and survive reboots and OTA updates.
+
+To change the hotspot name/password (the AP mode fallback), edit `config.h`:
 ```cpp
 #define WIFI_AP_SSID      "ESP32Lab"
 #define WIFI_AP_PASSWORD  "esp32lab"
@@ -358,17 +366,17 @@ Also in `config.h`:
 - ESP32 core: `arduino-cli core install esp32:esp32`
 - Libraries: run `firmware\install-libraries.bat`
 
-**Compile:**
+**Compile and optionally upload** using the per-branch `build.bat`:
+
 ```
-arduino-cli compile --profile default firmware/esp32lab
+build.bat                  — compile only
+build.bat COM3             — compile + upload via USB
+build.bat 192.168.0.117    — compile + upload via OTA (WiFi)
 ```
 
-**Upload** (replace COM3 with your port):
-```
-arduino-cli upload --fqbn esp32:esp32:esp32dev --port COM3 --input-dir "firmware/build/esp32.esp32.esp32dev"
-```
+The correct FQBN and output directory are set per branch (`esp32c3` or `esp32`). The resulting `.bin` is at `firmware/build/<board>/esp32lab.ino.bin`.
 
-**Find your port:**
+**Find your COM port:**
 ```
 arduino-cli board list
 ```
@@ -405,4 +413,4 @@ A future improvement would be a script to automate this embedding step.
 
 ---
 
-*ESP32 Lab is open source. Firmware and web app source at: [github link TBD]*
+*ESP32 Lab is open source. Source: https://github.com/idltd/esp32lab*

@@ -1,5 +1,6 @@
 # Build output
 firmware/build/
+firmware/esp32lab/build/
 
 # Release binaries (copy here manually for distribution)
 dist/
