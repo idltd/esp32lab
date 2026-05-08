@@ -366,15 +366,19 @@ To change the hotspot name/password (the AP mode fallback), edit `config.h`:
 - ESP32 core: `arduino-cli core install esp32:esp32`
 - Libraries: run `firmware\install-libraries.bat`
 
-**Compile and optionally upload** using the per-branch `build.bat`:
+**Compile and optionally upload** using `build.bat` in the repo root:
 
 ```
-build.bat                  — compile only
-build.bat COM3             — compile + upload via USB
-build.bat 192.168.0.117    — compile + upload via OTA (WiFi)
+build.bat                        Build both boards
+build.bat c3                     Build ESP32-C3 Mini only
+build.bat devkit                 Build ESP32 DevKit only
+build.bat c3 COM3                Build C3 + upload via USB
+build.bat c3 192.168.0.117       Build C3 + upload via OTA
+build.bat devkit COM3            Build DevKit + upload via USB
+build.bat devkit 192.168.0.117   Build DevKit + upload via OTA
 ```
 
-The correct FQBN and output directory are set per branch (`esp32c3` or `esp32`). The resulting `.bin` is at `firmware/build/<board>/esp32lab.ino.bin`.
+Output binaries land in `firmware/build/esp32c3/` and `firmware/build/esp32dev/`.
 
 **Find your COM port:**
 ```
