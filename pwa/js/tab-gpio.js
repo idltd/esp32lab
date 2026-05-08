@@ -6,13 +6,10 @@ export function initGpio(el) {
     panel.innerHTML = `
         <div class="card">
             <h3>GPIO Control</h3>
-            <div class="wiring-note" style="margin-bottom:12px">
-                Safe pins on a standard ESP32 DevKit: 4, 5, 13, 14, 16–27, 32–33.
-                Input-only (no output): 34–39. Avoid 0, 1, 2, 3, 6–12, 15.
-            </div>
+            <div id="gpio-safe-hint" class="wiring-note" style="margin-bottom:12px">Connect to a device to see safe pins.</div>
             <div class="form-row">
                 <label>Pin</label>
-                <input type="number" id="gpio-pin" value="13" min="0" max="39" style="width:70px">
+                <input type="number" id="gpio-pin" value="0" min="0" max="48" style="width:70px">
             </div>
             <div class="form-row">
                 <label>Mode</label>
@@ -90,7 +87,23 @@ export function initGpio(el) {
     };
 }
 
-export function activateGpio(api) { currentApi = api; }
+export function activateGpio(api) {
+    currentApi = api;
+    api.get('/api/system/info').then(d => {
+        const hint  = panel.querySelector('#gpio-safe-hint');
+        const pinIn = panel.querySelector('#gpio-pin');
+        const max   = d.gpio_max ?? 39;
+        const board = d.board ?? 'ESP32';
+        const safe  = d.gpio_safe || [];
+        pinIn.max = max;
+        if (safe.length > 0) {
+            pinIn.value = safe[0];
+            hint.textContent = 'Board: ' + board + '.  Safe pins: ' + safe.join(', ') + '.';
+        } else {
+            hint.textContent = 'Board: ' + board + '.  GPIO range: 0–' + max + '.';
+        }
+    }).catch(() => {});
+}
 export function deactivateGpio() { currentApi = null; }
 
 function addLog(msg) {
