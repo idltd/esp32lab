@@ -57,7 +57,7 @@ So: **one codebase, one `master` branch** — but you must flash the binary that
 
 **Other features:**
 - Browser-based OTA firmware updates (System tab → Firmware Update)
-- Per-device naming stored in NVS — default based on MAC address (e.g. `esp32lab-dba8`), accessible via `http://esp32lab-dba8.local/`
+- Per-device naming stored in NVS — default based on MAC address (e.g. `esp32lab-XXXX`); the full `.local` URL is shown as a clickable link in the System tab
 - LED identify button — blinks the built-in LED so you know which device you're talking to
 - Configurable LED pin via UI — set and save from the browser, no reflash
 - Runtime board self-detection — GPIO limits, reserved pins, and LED polarity set automatically at boot
@@ -99,7 +99,7 @@ Pre-built binaries are also available on the [Releases page](https://github.com/
 2. Open `http://192.168.4.1`
 
 **After joining your network:**
-- Open `http://esp32lab-XXXX.local/` (where XXXX = last 4 chars of MAC)
+- The System tab shows your device's local address (e.g. `http://esp32lab-XXXX.local/`) as a clickable link — note it down before the device restarts
 - Or use the IP address shown in your router's device list
 
 > **Phone tip:** disable mobile data before connecting in hotspot mode, otherwise the phone stays on 4G/5G.

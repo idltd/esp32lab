@@ -20,6 +20,7 @@ export function initSystem(el) {
                 <input type="text" id="device-name-input" style="flex:1" placeholder="esp32lab">
                 <button id="device-rename-btn" class="secondary">Rename</button>
             </div>
+            <div id="device-local-url" style="font-size:12px;color:var(--text-dim);margin:-4px 0 10px;display:none"></div>
             <div class="form-row">
                 <label>LED Pin</label>
                 <input type="number" id="led-pin-input" min="-1" max="48" style="width:70px" placeholder="auto">
@@ -134,6 +135,13 @@ function render(d) {
 
     const nameIn = panel.querySelector('#device-name-input');
     if (nameIn && d.name && !nameIn.value) nameIn.value = d.name;
+
+    const localUrl = panel.querySelector('#device-local-url');
+    if (localUrl && d.name) {
+        const url = `http://${d.name}.local/`;
+        localUrl.innerHTML = `Local address: <a href="${url}" style="color:var(--accent);font-family:monospace">${url}</a>`;
+        localUrl.style.display = 'block';
+    }
 
     const ledIn = panel.querySelector('#led-pin-input');
     if (ledIn && d.led_pin != null) {
