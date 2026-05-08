@@ -25,7 +25,7 @@ The kit is designed to be safe and forgiving. All sensors run on 3.3 volts. The 
 | KY-040 rotary encoder module | 1 | A dial that counts turns |
 | LED (any colour) + 330Ω resistor | 1 each | Controlled output experiments |
 
-> **Note:** The HC-SR04**P** in this kit is the 3.3V version. Standard HC-SR04 modules (without the P) look identical but use 5V and will damage the ESP32. If you are sourcing your own, make sure you get the P version.
+> **Note:** The HC-SR04**P** in this kit is the 3.3V version. Standard HC-SR04 modules (without the P) look identical but output 5V on the ECHO line, which will damage the ESP32 GPIO pins. If you are sourcing your own, get the P version — or see the voltage divider note in the sensor section below if you only have a 5V module.
 
 ---
 
@@ -148,7 +148,23 @@ The wiring guide in the app shows pin connections. The instructions below explai
 
 **What it does:** Measures how far away an object is, by sending out a pulse of ultrasound and timing the echo. Range roughly 2cm to 400cm.
 
-**Wiring:** Four pins — VCC, GND, TRIG (trigger), and ECHO. The TRIG and ECHO pins connect to two different ESP32 pins (shown in the app). **Use HC-SR04P only — not standard HC-SR04.**
+**Wiring:** Four pins — VCC, GND, TRIG (trigger), and ECHO. The TRIG and ECHO pins connect to two different ESP32 pins (shown in the app). **Use HC-SR04P only — not standard HC-SR04.** (See voltage divider note below if you only have the 5V version.)
+
+**Why the P matters — and what to do if you only have a 5V HC-SR04:**
+
+The ECHO pin on a standard HC-SR04 outputs 5V, which is above the ESP32's 3.3V GPIO limit and will damage it over time (or immediately). The HC-SR04**P** fixes this by running on 3.3V throughout — same pinout, same code, just safe to connect directly.
+
+If you only have the 5V version, you can protect the ESP32 using a **voltage divider** on the ECHO line. A voltage divider is two resistors in series between the ECHO pin and GND; you tap the signal from the junction between them. Choose values so the junction sits at roughly 3.3V:
+
+```
+HC-SR04 ECHO ──┬── 10 kΩ ──┬── ESP32 ECHO pin
+               │            │
+              GND         20 kΩ
+                            │
+                           GND
+```
+
+The 10 kΩ and 20 kΩ resistors divide the 5V in a 1:2 ratio — one third of the voltage (≈1.67V) is dropped across the top resistor, and two thirds (≈3.33V) remains at the junction, which is what the ESP32 sees. The TRIG pin is fine at 3.3V and connects directly. VCC for the 5V module goes to the 5V pin on the board, not 3.3V.
 
 **Things to try:**
 - Hold your hand in front of it at different distances. Watch the reading change.
