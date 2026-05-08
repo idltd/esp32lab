@@ -8,12 +8,22 @@ Designed as a low-cost, low-risk platform for hands-on electronics learning. Eve
 
 ## Supported boards
 
-| Branch | Board | FQBN |
-|--------|-------|------|
-| `board/esp32-c3-mini` | ESP32-C3 Mini | `esp32:esp32:esp32c3` |
-| `board/esp32-devkit` | ESP32 DevKit (WROOM-32) | `esp32:esp32:esp32` |
+| Board | CPU architecture | FQBN | build.bat target |
+|-------|-----------------|------|-----------------|
+| ESP32-C3 Mini | RISC-V | `esp32:esp32:esp32c3` | `c3` |
+| ESP32 DevKit (WROOM-32) | Xtensa LX6 | `esp32:esp32:esp32` | `devkit` |
 
-`master` is a read-only baseline — all development happens on the board branches.
+### Why two binaries?
+
+ESP32 variants use different CPU architectures. The C3 runs a **RISC-V** core; the classic DevKit runs an **Xtensa LX6** core. These use entirely different instruction sets — a binary compiled for one will simply not run on the other. This is a fundamental hardware constraint, not a software choice.
+
+Within each architecture, however, the firmware handles variation automatically. At boot it calls `ESP.getChipModel()` to identify the exact chip (ESP32, ESP32-C3, ESP32-S2, ESP32-S3, ESP32-C6…) and uses that to configure:
+
+- The GPIO pin range (e.g. 0–21 on the C3, 0–39 on the classic ESP32)
+- Which pins are reserved (flash, USB, strapping pins — touching these crashes or bricks the board)
+- The default LED pin and whether it is active-high or active-low
+
+So: **one codebase, one `master` branch** — but you must flash the binary that matches your board's CPU architecture.
 
 ---
 
@@ -49,6 +59,8 @@ Designed as a low-cost, low-risk platform for hands-on electronics learning. Eve
 - Browser-based OTA firmware updates (System tab → Firmware Update)
 - Per-device naming stored in NVS — default based on MAC address (e.g. `esp32lab-dba8`), accessible via `http://esp32lab-dba8.local/`
 - LED identify button — blinks the built-in LED so you know which device you're talking to
+- Configurable LED pin via UI — set and save from the browser, no reflash
+- Runtime board self-detection — GPIO limits, reserved pins, and LED polarity set automatically at boot
 - JS/CSS assets cached in browser with firmware-version cache busting
 
 ---
@@ -66,17 +78,19 @@ firmware\install-libraries.bat
 
 ### 2. Build and flash
 
-Check out the branch for your board, then run `build.bat`:
+Run `build.bat` from the repo root:
 
 ```bat
-git checkout board/esp32-c3-mini    (or board/esp32-devkit)
-
-build.bat                           compile only
-build.bat COM36                     compile + flash via USB
-build.bat 192.168.0.117             compile + flash via OTA
+build.bat                           compile both boards
+build.bat c3                        compile C3 Mini only
+build.bat devkit                    compile DevKit only
+build.bat c3 COM36                  compile C3 + flash via USB
+build.bat devkit 192.168.0.117      compile DevKit + flash via OTA
 ```
 
-The compiled binary lands in `firmware/build/esp32c3/` or `firmware/build/esp32dev/`.
+Compiled binaries land in `firmware/build/esp32c3/` and `firmware/build/esp32dev/`.
+
+Pre-built binaries are also available on the [Releases page](https://github.com/idltd/esp32lab/releases).
 
 ### 3. Connect
 
@@ -98,23 +112,24 @@ Click **Sensors**, pick a type from the dropdown, follow the colour-coded wiring
 
 ## Configuration
 
-`firmware/esp32lab/config.h` contains the board-specific settings:
+Most settings are configured via the browser UI and stored in NVS — no reflash needed:
+- **WiFi** — System tab → WiFi Configuration
+- **LED pin** — System tab → Device → LED Pin
+- **Device name** — System tab → Device → Name
+
+`firmware/esp32lab/config.h` contains only the fixed compile-time settings:
 
 ```cpp
-// Hotspot credentials (used when no network is saved, or saved network fails)
+// Hotspot credentials (AP fallback when no network is saved or reachable)
 #define WIFI_AP_SSID      "ESP32Lab"
 #define WIFI_AP_PASSWORD  "esp32lab"
 
-// Sensor port pins
+// Grove sensor port pins
 #define GROVE_D_PIN   4   // primary sensor data pin
 #define GROVE_D2_PIN  5   // secondary (HC-SR04 echo, rotary DT)
-
-// Built-in LED pin for the Identify feature (-1 to disable)
-#define STATUS_LED_PIN  8    // C3 Mini: 8 (active-low)
-                             // DevKit:  2 (active-high)
 ```
 
-WiFi credentials for your home network are set via the browser UI and stored in NVS — no config file editing or reflash needed.
+Board-specific settings (GPIO limits, reserved pins, LED pin and polarity) are detected automatically at runtime via `ESP.getChipModel()`.
 
 ---
 
@@ -123,10 +138,11 @@ WiFi credentials for your home network are set via the browser UI and stored in 
 ```
 firmware/
   esp32lab/
-    config.h          Board-specific config (pins, version)
+    config.h          Hotspot credentials, Grove pins, firmware version
+    board.*           Runtime chip detection — GPIO limits, reserved pins, LED polarity
     esp32lab.ino      Setup / loop
     api_server.*      ESPAsyncWebServer wrapper
-    api_system.*      /api/system/* — info, identify, rename, OTA
+    api_system.*      /api/system/* — info, identify, LED pin, rename, OTA
     api_gpio.*        /api/gpio/* — pin read/write/mode
     api_grove.*       /api/grove/* — sensor config, read, SSE stream
     api_ota.*         /api/system/update — OTA upload handler
@@ -134,8 +150,8 @@ firmware/
     wifi_manager.*    NVS WiFi provisioning + /api/wifi/* endpoints
     sketch.yaml       arduino-cli build metadata
   build/
-    esp32c3/          Compiled output for C3 branch (gitignored)
-    esp32dev/         Compiled output for DevKit branch (gitignored)
+    esp32c3/          Compiled output — C3 Mini (gitignored)
+    esp32dev/         Compiled output — DevKit (gitignored)
   install-libraries.bat
 
 pwa/                  Web app source (kept in sync with api_webapp.cpp)
@@ -143,24 +159,22 @@ pwa/                  Web app source (kept in sync with api_webapp.cpp)
   css/style.css
   js/api.js           HTTP wrapper
   js/app.js           Tab manager, connection logic
-  js/tab-system.js    System tab (WiFi, OTA, naming, identify)
-  js/tab-gpio.js      GPIO tab
+  js/tab-system.js    System tab (WiFi, OTA, naming, LED pin, identify)
+  js/tab-gpio.js      GPIO tab (dynamic board-aware pin list)
   js/tab-grove.js     Sensors tab (wiring guides, streaming)
 
-build.bat             Build + optional upload script
+build.bat             Unified build + upload script (c3 / devkit / both)
 MANUAL.md             End-user kit manual
-dist/                 Release binaries — copy here manually (gitignored)
 ```
 
 ---
 
 ## Release workflow
 
-1. Tag the commit: `git tag v1.5.0`
-2. Copy the bin to `dist/` with a descriptive name:
-   - `dist/esp32lab-c3-v1.5.0.bin`
-   - `dist/esp32lab-devkit-v1.5.0.bin`
-3. Attach to a GitHub release if distributing
+1. Bump `FIRMWARE_VERSION` in `config.h`
+2. Build both boards: `build.bat`
+3. Commit and tag: `git tag vX.Y.Z && git push origin master --tags`
+4. Create a GitHub release and attach both `.bin` files from `firmware/build/`
 
 ---
 
@@ -168,6 +182,7 @@ dist/                 Release binaries — copy here manually (gitignored)
 
 | Version | Changes |
 |---------|---------|
+| 1.6.0 | Runtime board self-detection, configurable LED pin via UI, dynamic GPIO safe-pin list, unified build.bat, single master branch |
 | 1.5.0 | Device naming (NVS, MAC-based default), LED identify button, asset caching with version-based cache busting |
 | 1.4.0 | WiFi network scan in provisioning UI |
 | 1.3.0 | NVS-based WiFi provisioning via web UI (no reflash), boot-time auto-reconnect, AP fallback |
