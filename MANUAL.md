@@ -157,11 +157,11 @@ The ECHO pin on a standard HC-SR04 outputs 5V, which is above the ESP32's 3.3V G
 If you only have the 5V version, you can protect the ESP32 using a **voltage divider** on the ECHO line. A voltage divider is two resistors in series between the ECHO pin and GND; you tap the signal from the junction between them. Choose values so the junction sits at roughly 3.3V:
 
 ```
-HC-SR04 ECHO ──┬── 10 kΩ ──┬── ESP32 ECHO pin
-               │            │
-              GND         20 kΩ
-                            │
-                           GND
+HC-SR04 ECHO ─── 10 kΩ ──┬── ESP32 ECHO pin
+                          │
+                        20 kΩ
+                          │
+                         GND
 ```
 
 The 10 kΩ and 20 kΩ resistors divide the 5V in a 1:2 ratio — one third of the voltage (≈1.67V) is dropped across the top resistor, and two thirds (≈3.33V) remains at the junction, which is what the ESP32 sees. The TRIG pin is fine at 3.3V and connects directly. VCC for the 5V module goes to the 5V pin on the board, not 3.3V.
