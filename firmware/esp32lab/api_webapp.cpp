@@ -444,11 +444,6 @@ export function initSystem(el) {
                 <button id="device-rename-btn" class="secondary">Rename</button>
             </div>
             <div id="device-local-url" style="font-size:12px;color:var(--text-dim);margin:-4px 0 10px;display:none"></div>
-            <div class="form-row">
-                <label>LED Pin</label>
-                <input type="number" id="led-pin-input" min="-1" max="48" style="width:70px" placeholder="auto">
-                <button id="led-pin-btn" class="secondary">Save</button>
-            </div>
             <div class="form-row" style="margin-top:4px">
                 <button id="identify-btn">Identify (Blink LED)</button>
             </div>
@@ -493,7 +488,6 @@ export function initSystem(el) {
 
     panel.querySelector('#identify-btn').onclick = identifyDevice;
     panel.querySelector('#device-rename-btn').onclick = renameDevice;
-    panel.querySelector('#led-pin-btn').onclick = saveLedPin;
     panel.querySelector('#ota-btn').onclick = startOta;
     panel.querySelector('#wifi-scan-btn').onclick = scanWifi;
     panel.querySelector('#wifi-connect-btn').onclick = connectWifi;
@@ -574,11 +568,6 @@ function render(d) {
         wifiLocalUrl.style.display = 'block';
     }
 
-    const ledIn = panel.querySelector('#led-pin-input');
-    if (ledIn && d.led_pin != null) {
-        if (d.gpio_max != null) ledIn.max = d.gpio_max;
-        if (ledIn.value === '') ledIn.value = d.led_pin;
-    }
 }
 
 function identifyDevice() {
@@ -607,17 +596,6 @@ function renameDevice() {
     }).catch(() => {
         hint.textContent = 'Device restarting. Reconnect at http://' + name + '.local/';
     });
-}
-
-function saveLedPin() {
-    if (!currentApi) return;
-    const pin = parseInt(panel.querySelector('#led-pin-input').value, 10);
-    if (isNaN(pin) || pin < -1) { alert('Enter a valid pin number (-1 to disable LED).'); return; }
-    const btn = panel.querySelector('#led-pin-btn');
-    btn.disabled = true;
-    currentApi.post('/api/system/ledpin', { pin })
-        .then(() => { btn.disabled = false; })
-        .catch(e => { alert('Error: ' + e.message); btn.disabled = false; });
 }
 
 function scanWifi() {

@@ -68,6 +68,8 @@ void setup() {
 
 void loop() {
     wifiManagerLoop();
+    systemLoop();
+    otaLoop();
     apiServer.loop();
     groveLoop();
 }

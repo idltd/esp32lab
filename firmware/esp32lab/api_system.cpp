@@ -175,5 +175,52 @@ void setupSystemApi() {
         }
     );
 
+    // Set up BOOT button for triple-click factory reset
+    int bootPin = boardBootPin();
+    if (bootPin >= 0) {
+        pinMode(bootPin, INPUT_PULLUP);
+        Serial.printf("[System] Triple-click GPIO%d within 2s = factory reset\n", bootPin);
+    }
+
     Serial.println("[API] System endpoints registered");
+}
+
+void systemLoop() {
+    int bootPin = boardBootPin();
+    if (bootPin < 0) return;
+
+    static bool     lastState  = HIGH;
+    static int      clicks     = 0;
+    static unsigned long firstClickMs = 0;
+
+    bool state = digitalRead(bootPin);
+
+    if (lastState == HIGH && state == LOW) {          // falling edge = press
+        unsigned long now = millis();
+        if (clicks > 0 && (now - firstClickMs) > 2000) clicks = 0;  // window expired
+        if (clicks == 0) firstClickMs = now;
+        clicks++;
+
+        Serial.printf("[System] Boot button click %d/3\n", clicks);
+
+        if (clicks >= 3) {
+            clicks = 0;
+            Serial.println("[System] Factory reset — clearing credentials and restarting.");
+            int led = effectiveLedPin();
+            if (led >= 0) {                           // rapid blink to confirm
+                for (int i = 0; i < 6; i++) {
+                    digitalWrite(led, i % 2 == 0 ? boardLedOn() : !boardLedOn());
+                    delay(100);
+                }
+            }
+            Preferences prefs;
+            prefs.begin("esp32lab", false);
+            prefs.clear();
+            prefs.end();
+            delay(200);
+            ESP.restart();
+        }
+    }
+
+    lastState = state;
 }

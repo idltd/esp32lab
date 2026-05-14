@@ -57,3 +57,10 @@ int    boardGpioMax()          { return _gpioMax; }
 bool   boardPinReserved(int p) { return p < 0 || p >= 50 || _reserved[p]; }
 int    boardDefaultLedPin()    { return _defaultLed; }
 int    boardLedOn()            { return _ledOn; }
+
+int boardBootPin() {
+    if (_name == "ESP32-C3" || _name == "ESP32-C6") return 9;
+    if (_name == "ESP32-S2" || _name == "ESP32-S3") return 0;
+    if (_name.startsWith("ESP32"))                  return 0;
+    return -1;
+}

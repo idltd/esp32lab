@@ -3,6 +3,15 @@
 #include "api_ota.h"
 #include <Update.h>
 
+static unsigned long gRestartAt = 0;
+
+void otaLoop() {
+    if (gRestartAt && millis() >= gRestartAt) {
+        Serial.println("[OTA] Restarting now.");
+        ESP.restart();
+    }
+}
+
 void setupOtaApi() {
     apiServer.http().on("/api/system/update", HTTP_POST,
         // Called when the full upload is complete
@@ -11,10 +20,7 @@ void setupOtaApi() {
             req->send(ok ? 200 : 500, "application/json",
                 ok ? "{\"status\":\"ok\"}"
                    : "{\"error\":\"Flash write failed\"}");
-            if (ok) {
-                delay(500);
-                ESP.restart();
-            }
+            if (ok) gRestartAt = millis() + 1500;  // restart from loop() after TCP flushes
         },
         // Called for each chunk of the uploaded binary
         [](AsyncWebServerRequest* req, const String& filename,
