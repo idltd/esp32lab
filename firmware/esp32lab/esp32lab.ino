@@ -3,7 +3,7 @@
 //
 // Turns a bare ESP32 dev board into a browser-controlled sensor lab.
 //
-// First boot: creates "ESP32Lab" hotspot → http://192.168.4.1/
+// First boot: creates "ESP32Lab_XXXX" hotspot (XXXX = last 4 MAC digits) → captive portal
 // After WiFi config: joins saved network → http://esp32lab.local/
 // If saved network unreachable: falls back to hotspot automatically.
 //
@@ -61,13 +61,13 @@ void setup() {
                       WiFi.localIP().toString().c_str(), hostname.c_str());
     } else {
         Serial.printf("[ESP32 Lab] Ready! Connect to WiFi '%s' (password: %s)\n",
-                      WIFI_AP_SSID, WIFI_AP_PASSWORD);
-        Serial.printf("[ESP32 Lab] Browse to http://%s/  or  http://%s.local/\n",
-                      WiFi.softAPIP().toString().c_str(), hostname.c_str());
+                      getApSsid().c_str(), WIFI_AP_PASSWORD);
+        Serial.printf("[ESP32 Lab] Captive portal active — browser will open automatically.\n");
     }
 }
 
 void loop() {
+    wifiManagerLoop();
     apiServer.loop();
     groveLoop();
 }

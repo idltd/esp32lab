@@ -8,7 +8,7 @@
 
 // --- Hotspot (AP mode) ---
 // Used when no WiFi credentials are saved, or saved credentials fail.
-#define WIFI_AP_SSID       "ESP32Lab"
+#define WIFI_AP_SSID_BASE  "ESP32Lab"   // runtime suffix _XXXX appended from MAC
 #define WIFI_AP_PASSWORD   "esp32lab"    // min 8 chars
 #define WIFI_AP_CHANNEL    1
 #define WIFI_AP_MAX_CONN   4
@@ -24,4 +24,4 @@
 #define GROVE_D2_PIN   5    // Secondary data pin (HC-SR04 echo, rotary DT)
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION   "1.6.1"
+#define FIRMWARE_VERSION   "1.7.0"

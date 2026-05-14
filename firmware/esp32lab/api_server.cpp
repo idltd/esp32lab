@@ -1,5 +1,6 @@
 #include "config.h"
 #include "api_server.h"
+#include <WiFi.h>
 
 ApiServer apiServer;
 
@@ -12,8 +13,9 @@ void ApiServer::begin() {
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Headers", "Content-Type");
 
     _server.onNotFound([](AsyncWebServerRequest* req) {
-        if (req->method() == HTTP_OPTIONS) req->send(200);
-        else sendError(req, 404, "Not found");
+        if (req->method() == HTTP_OPTIONS) { req->send(200); return; }
+        if (WiFi.getMode() == WIFI_AP) { req->redirect("http://192.168.4.1/"); return; }
+        sendError(req, 404, "Not found");
     });
 
     _server.begin();

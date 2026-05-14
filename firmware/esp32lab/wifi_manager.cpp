@@ -2,8 +2,13 @@
 #include "api_server.h"
 #include "wifi_manager.h"
 #include <WiFi.h>
+#include <DNSServer.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+
+static DNSServer dnsServer;
+static String    apSsid;
+static bool      gApMode = false;
 
 static bool tryConnect(const String& ssid, const String& pass) {
     WiFi.mode(WIFI_STA);
@@ -24,10 +29,26 @@ static bool tryConnect(const String& ssid, const String& pass) {
 }
 
 static void startAP() {
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    char ssidBuf[32];
+    snprintf(ssidBuf, sizeof(ssidBuf), "%s_%02X%02X", WIFI_AP_SSID_BASE, mac[4], mac[5]);
+    apSsid = ssidBuf;
+
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASSWORD, WIFI_AP_CHANNEL, 0, WIFI_AP_MAX_CONN);
+    WiFi.softAP(apSsid.c_str(), WIFI_AP_PASSWORD, WIFI_AP_CHANNEL, 0, WIFI_AP_MAX_CONN);
     Serial.printf("[WiFi] Hotspot: %s  IP: %s\n",
-                  WIFI_AP_SSID, WiFi.softAPIP().toString().c_str());
+                  apSsid.c_str(), WiFi.softAPIP().toString().c_str());
+
+    // Captive portal DNS — resolves all queries to the AP IP
+    dnsServer.start(53, "*", WiFi.softAPIP());
+    gApMode = true;
+}
+
+const String& getApSsid() { return apSsid; }
+
+void wifiManagerLoop() {
+    if (gApMode) dnsServer.processNextRequest();
 }
 
 bool wifiManagerSetup() {
@@ -59,9 +80,10 @@ void setupWifiApi() {
         bool sta = (WiFi.status() == WL_CONNECTED);
         JsonDocument doc;
         doc["mode"]       = sta ? "sta" : "ap";
-        doc["ssid"]       = sta ? WiFi.SSID() : String(WIFI_AP_SSID);
+        doc["ssid"]       = sta ? WiFi.SSID() : apSsid;
         doc["ip"]         = sta ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
         doc["saved_ssid"] = savedSsid;
+        doc["ap_ssid"]    = apSsid;
         String json; serializeJson(doc, json);
         req->send(200, "application/json", json);
     });

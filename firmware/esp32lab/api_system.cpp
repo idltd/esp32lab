@@ -2,6 +2,7 @@
 #include "board.h"
 #include "api_server.h"
 #include "api_system.h"
+#include "wifi_manager.h"
 #include <WiFi.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
@@ -79,7 +80,7 @@ void setupSystemApi() {
             doc["wifi"]["rssi"] = WiFi.RSSI();
         } else {
             doc["wifi"]["mode"]    = "hotspot";
-            doc["wifi"]["ssid"]    = WIFI_AP_SSID;
+            doc["wifi"]["ssid"]    = getApSsid();
             doc["wifi"]["ip"]      = WiFi.softAPIP().toString();
             doc["wifi"]["clients"] = WiFi.softAPgetStationNum();
         }

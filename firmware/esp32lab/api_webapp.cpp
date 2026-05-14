@@ -421,6 +421,7 @@ window.addEventListener('beforeunload', () => { if (api.connected) api.disconnec
 // ── js/tab-system.js ──────────────────────────────────────────────────────────
 
 static const char FILE_SYSTEM_JS[] = R"WEBEND(let panel, interval, currentApi;
+let apSsidCached = 'ESP32Lab';
 
 export function initSystem(el) {
     panel = el;
@@ -466,6 +467,7 @@ export function initSystem(el) {
                 <label>Password</label>
                 <input type="password" id="wifi-pass" placeholder="Password" style="flex:1">
             </div>
+            <div id="wifi-local-url" style="font-size:12px;color:var(--text-dim);margin:-4px 0 6px;display:none"></div>
             <div class="form-row">
                 <button id="wifi-connect-btn">Connect to Network</button>
                 <button id="wifi-forget-btn" class="secondary" style="display:none">Forget WiFi</button>
@@ -563,6 +565,13 @@ function render(d) {
         const url = 'http://' + d.name + '.local/';
         localUrl.innerHTML = 'Local address: <a href="' + url + '" style="color:var(--accent);font-family:monospace">' + url + '</a>';
         localUrl.style.display = 'block';
+    }
+
+    const wifiLocalUrl = panel.querySelector('#wifi-local-url');
+    if (wifiLocalUrl && d.name) {
+        const url = 'http://' + d.name + '.local/';
+        wifiLocalUrl.innerHTML = 'Local address once connected: <a href="' + url + '" style="color:var(--accent);font-family:monospace">' + url + '</a>';
+        wifiLocalUrl.style.display = 'block';
     }
 
     const ledIn = panel.querySelector('#led-pin-input');
@@ -679,6 +688,7 @@ function loadWifiConfig() {
                     hint.textContent = 'Last saved network "' + d.saved_ssid + '" was unreachable.';
                 }
             }
+            if (d.ap_ssid) apSsidCached = d.ap_ssid;
             if (d.saved_ssid && !ssidIn.value) ssidIn.value = d.saved_ssid;
         })
         .catch(() => {
@@ -715,8 +725,8 @@ function forgetWifi() {
     hint.style.display = 'block';
     hint.textContent = 'Clearing credentials and restarting…';
     fetch('http://' + currentApi.ip + '/api/wifi/forget', {method: 'POST'})
-        .then(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "ESP32Lab" WiFi network.'; })
-        .catch(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "ESP32Lab" WiFi network.'; });
+        .then(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "' + apSsidCached + '" WiFi network.'; })
+        .catch(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "' + apSsidCached + '" WiFi network.'; });
 }
 
 function startOta() {
