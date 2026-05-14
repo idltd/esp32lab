@@ -62,10 +62,11 @@ static const SensorDef SENSORS[] = {
         false, "Data (1-Wire)", nullptr, "C", nullptr
     },
     {
-        "hcsr04", "HC-SR04P Ultrasonic", "Distance",
-        "3.3V", false,
-        "CAUTION: Standard HC-SR04 requires 5V and its Echo pin outputs 5V - this WILL damage ESP32 GPIO. "
-        "Use the HC-SR04P (3.3V version). Trigger pin is safe to drive from 3.3V.",
+        "hcsr04", "HC-SR04 Ultrasonic", "Distance",
+        "3.3V–5V", false,
+        "HC-SR04P (3.3V): connect directly. Standard HC-SR04 (5V): ECHO pin outputs 5V — "
+        "use a voltage divider (1kΩ to ESP32, 2kΩ to GND) to bring it down to ~3.3V. "
+        "TRIG is safe to drive directly from 3.3V on either version.",
         true, "Trigger", "Echo", "cm", nullptr
     },
     {
@@ -195,12 +196,24 @@ static String takeReading() {
         }
 
     } else if (strcmp(activeSensor->id, "hcsr04") == 0) {
-        digitalWrite(groveD, LOW);  delayMicroseconds(2);
+        // HC-SR04 requires at least 60ms between triggers — enforce it
+        static unsigned long lastTrigMs = 0;
+        unsigned long sinceMs = millis() - lastTrigMs;
+        if (sinceMs < 60) delay(60 - sinceMs);
+
+        digitalWrite(groveD, LOW);  delayMicroseconds(4);
         digitalWrite(groveD, HIGH); delayMicroseconds(10);
         digitalWrite(groveD, LOW);
-        long duration = pulseIn(groveD2, HIGH, 30000);
+        delayMicroseconds(200);  // blank window — skip TRIG crosstalk on ECHO line
+        lastTrigMs = millis();
+
+        long duration = pulseIn(groveD2, HIGH, 35000);
+        if (duration == 0) duration = pulseIn(groveD2, HIGH, 35000);  // one retry for WiFi glitches
+
         if (duration == 0) {
-            doc["error"] = "No echo - check wiring. Use HC-SR04P (3.3V), not standard HC-SR04.";
+            doc["error"] = "No echo — check wiring. 5V sensor needs 1k/2k divider on ECHO.";
+        } else if (duration < 150) {
+            doc["error"] = "Reading too short — crosstalk or loose wire on ECHO.";
         } else {
             doc["distance_cm"] = serialized(String(duration * 0.0343f / 2.0f, 1));
         }

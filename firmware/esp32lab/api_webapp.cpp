@@ -1111,7 +1111,7 @@ function buildWiringGuide(sensorId, d, d2) {
         pwm_out:     { rows: [['PWM Out', `GPIO${d}`], ['VCC', '3.3V'], ['GND', 'GND']], note: 'Connect an LED + 330&#937; resistor. Duty 0 = off, 128 = half, 255 = full on.' },
         dht11:       { rows: [['VCC', '3.3V'], ['GND', 'GND'], ['DATA', `GPIO${d}`]], note: 'Breakout modules include a pull-up &mdash; no extra parts needed. Bare sensor: add 10k&#937; from DATA to 3.3V.' },
         ds18b20:     { rows: [['VCC (red)', '3.3V'], ['GND (black)', 'GND'], ['DATA (yellow)', `GPIO${d}`]], note: 'Required: 4.7k&#937; resistor between 3.3V and DATA. Without it readings will fail.' },
-        hcsr04:      { rows: [['VCC', '3.3V  &larr; HC-SR04P only!'], ['GND', 'GND'], ['TRIG', `GPIO${d}  (trigger)`], ['ECHO', `GPIO${d2}  (echo)`]], note: '&#9888; Use HC-SR04<strong>P</strong> (3.3V version). Standard HC-SR04 outputs 5V on ECHO and will damage the ESP32.' },
+        hcsr04:      { rows: [['VCC', '5V  (or 3.3V for HC-SR04P)'], ['GND', 'GND'], ['TRIG', `GPIO${d}  (direct)`], ['ECHO', `1k&#937; &rarr; GPIO${d2} &rarr; 2k&#937; &rarr; GND`]], note: 'HC-SR04P (3.3V): connect ECHO directly. Standard HC-SR04 (5V): ECHO pin outputs 5V &mdash; add a 1k&#937;/2k&#937; voltage divider to bring it to ~3.3V before the ESP32 pin. TRIG is safe to drive directly from 3.3V on both versions.' },
         rotary:      { rows: [['VCC (+)', '3.3V'], ['GND (&minus;)', 'GND'], ['CLK', `GPIO${d}`], ['DT', `GPIO${d2}`]], note: 'Works with KY-040 encoder modules. The SW (button) pin is not used here.' },
     };
     const g = G[sensorId];

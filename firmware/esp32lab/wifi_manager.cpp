@@ -12,6 +12,11 @@ static bool      gApMode = false;
 
 static bool tryConnect(const String& ssid, const String& pass) {
     WiFi.mode(WIFI_STA);
+    uint8_t mac[6];
+    WiFi.macAddress(mac);
+    char hostname[24];
+    snprintf(hostname, sizeof(hostname), "esp32lab-%02x%02x", mac[4], mac[5]);
+    WiFi.setHostname(hostname);
     WiFi.begin(ssid.c_str(), pass.c_str());
     Serial.printf("[WiFi] Trying '%s'", ssid.c_str());
     for (int i = 0; i < WIFI_STA_TIMEOUT_S * 2; i++) {
@@ -29,13 +34,14 @@ static bool tryConnect(const String& ssid, const String& pass) {
 }
 
 static void startAP() {
+    WiFi.mode(WIFI_AP);
+
     uint8_t mac[6];
     WiFi.macAddress(mac);
     char ssidBuf[32];
     snprintf(ssidBuf, sizeof(ssidBuf), "%s_%02X%02X", WIFI_AP_SSID_BASE, mac[4], mac[5]);
     apSsid = ssidBuf;
 
-    WiFi.mode(WIFI_AP);
     WiFi.softAP(apSsid.c_str(), WIFI_AP_PASSWORD, WIFI_AP_CHANNEL, 0, WIFI_AP_MAX_CONN);
     Serial.printf("[WiFi] Hotspot: %s  IP: %s\n",
                   apSsid.c_str(), WiFi.softAPIP().toString().c_str());
