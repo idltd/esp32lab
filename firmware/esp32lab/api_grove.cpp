@@ -204,11 +204,10 @@ static String takeReading() {
         digitalWrite(groveD, LOW);  delayMicroseconds(4);
         digitalWrite(groveD, HIGH); delayMicroseconds(10);
         digitalWrite(groveD, LOW);
-        delayMicroseconds(200);  // blank window — skip TRIG crosstalk on ECHO line
+        delayMicroseconds(100);  // skip TRIG crosstalk, arrive before ECHO rises (~150µs)
         lastTrigMs = millis();
 
         long duration = pulseIn(groveD2, HIGH, 35000);
-        if (duration == 0) duration = pulseIn(groveD2, HIGH, 35000);  // one retry for WiFi glitches
 
         if (duration == 0) {
             doc["error"] = "No echo — check wiring. 5V sensor needs 1k/2k divider on ECHO.";
