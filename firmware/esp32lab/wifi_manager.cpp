@@ -5,18 +5,24 @@
 #include <DNSServer.h>
 #include <Preferences.h>
 #include <ArduinoJson.h>
+#include <esp_mac.h>
 
 static DNSServer dnsServer;
 static String    apSsid;
 static bool      gApMode = false;
 
+// Read last 4 hex digits of MAC from eFuse — works before WiFi is initialised
+static String macSuffix() {
+    uint8_t mac[6];
+    esp_efuse_mac_get_default(mac);
+    char buf[5];
+    snprintf(buf, sizeof(buf), "%02X%02X", mac[4], mac[5]);
+    return String(buf);
+}
+
 static bool tryConnect(const String& ssid, const String& pass) {
     WiFi.mode(WIFI_STA);
-    uint8_t mac[6];
-    WiFi.macAddress(mac);
-    char hostname[24];
-    snprintf(hostname, sizeof(hostname), "esp32lab-%02x%02x", mac[4], mac[5]);
-    WiFi.setHostname(hostname);
+    WiFi.setHostname(("esp32lab-" + macSuffix()).c_str());
     WiFi.begin(ssid.c_str(), pass.c_str());
     Serial.printf("[WiFi] Trying '%s'", ssid.c_str());
     for (int i = 0; i < WIFI_STA_TIMEOUT_S * 2; i++) {
@@ -34,13 +40,8 @@ static bool tryConnect(const String& ssid, const String& pass) {
 }
 
 static void startAP() {
+    apSsid = String(WIFI_AP_SSID_BASE) + "_" + macSuffix();
     WiFi.mode(WIFI_AP);
-
-    uint8_t mac[6];
-    WiFi.macAddress(mac);
-    char ssidBuf[32];
-    snprintf(ssidBuf, sizeof(ssidBuf), "%s_%02X%02X", WIFI_AP_SSID_BASE, mac[4], mac[5]);
-    apSsid = ssidBuf;
 
     WiFi.softAP(apSsid.c_str(), WIFI_AP_PASSWORD, WIFI_AP_CHANNEL, 0, WIFI_AP_MAX_CONN);
     Serial.printf("[WiFi] Hotspot: %s  IP: %s\n",

@@ -6,6 +6,7 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
+#include <esp_mac.h>
 
 extern bool gStaMode;
 
@@ -16,7 +17,7 @@ String getDeviceName() {
     prefs.end();
     if (name.length() > 0) return name;
     uint8_t mac[6];
-    WiFi.macAddress(mac);
+    esp_efuse_mac_get_default(mac);
     char buf[24];
     snprintf(buf, sizeof(buf), "esp32lab-%02x%02x", mac[4], mac[5]);
     return String(buf);
