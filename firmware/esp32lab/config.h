@@ -21,7 +21,7 @@
 
 // --- Grove / Sensor Port ---
 #define GROVE_D_PIN    4    // Primary data / signal pin
-#define GROVE_D2_PIN   5    // Secondary data pin (HC-SR04 echo, rotary DT)
+#define GROVE_D2_PIN   3    // Secondary data pin (HC-SR04 echo, rotary DT)
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION   "1.8.1"
+#define FIRMWARE_VERSION   "1.8.2"
