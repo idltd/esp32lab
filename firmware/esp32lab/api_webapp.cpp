@@ -68,6 +68,7 @@ html, body {
     background: var(--bg);
     color: var(--text);
     overflow: hidden;
+    overscroll-behavior: none;
     -webkit-user-select: none; user-select: none;
 }
 
@@ -450,6 +451,17 @@ export function initSystem(el) {
             <div id="device-hint" style="font-size:12px;color:var(--text-dim);margin-top:8px;display:none"></div>
         </div>
         <div class="card">
+            <h3>Grove Pins</h3>
+            <div class="form-row">
+                <label>D pin</label>
+                <input type="number" id="grove-pin-d" min="0" max="50" style="width:70px;font-family:monospace">
+                <label>D2 pin</label>
+                <input type="number" id="grove-pin-d2" min="0" max="50" style="width:70px;font-family:monospace">
+                <button id="grove-pin-save" class="secondary">Save</button>
+            </div>
+            <div id="grove-pin-hint" style="font-size:12px;color:var(--text-dim);margin-top:4px;display:none"></div>
+        </div>
+        <div class="card">
             <h3>WiFi Configuration</h3>
             <div id="wifi-status" style="font-size:13px;margin-bottom:12px;color:var(--text-dim)">Loading...</div>
             <div class="form-row">
@@ -488,6 +500,7 @@ export function initSystem(el) {
 
     panel.querySelector('#identify-btn').onclick = identifyDevice;
     panel.querySelector('#device-rename-btn').onclick = renameDevice;
+    panel.querySelector('#grove-pin-save').onclick = saveGrovePins;
     panel.querySelector('#ota-btn').onclick = startOta;
     panel.querySelector('#wifi-scan-btn').onclick = scanWifi;
     panel.querySelector('#wifi-connect-btn').onclick = connectWifi;
@@ -498,6 +511,7 @@ export function activateSystem(api) {
     currentApi = api;
     refresh(api);
     loadWifiConfig();
+    loadGrovePins();
     interval = setInterval(() => refresh(api), 5000);
 }
 
@@ -707,6 +721,29 @@ function forgetWifi() {
         .catch(() => { hint.textContent = 'Device restarted in hotspot mode. Connect to the "' + apSsidCached + '" WiFi network.'; });
 }
 
+function loadGrovePins() {
+    if (!currentApi) return;
+    currentApi.get('/api/grove/config').then(r => {
+        panel.querySelector('#grove-pin-d').value  = r.pin_d;
+        panel.querySelector('#grove-pin-d2').value = r.pin_d2;
+    }).catch(() => {});
+}
+
+function saveGrovePins() {
+    if (!currentApi) return;
+    const d  = parseInt(panel.querySelector('#grove-pin-d').value);
+    const d2 = parseInt(panel.querySelector('#grove-pin-d2').value);
+    if (isNaN(d) || isNaN(d2)) return;
+    const hint = panel.querySelector('#grove-pin-hint');
+    currentApi.post('/api/grove/pins', { pin_d: d, pin_d2: d2 }).then(r => {
+        hint.textContent = `Saved: D=GPIO${r.pin_d}, D2=GPIO${r.pin_d2} — reconfigure sensor on the Sensors tab`;
+        hint.style.display = 'block';
+    }).catch(e => {
+        hint.textContent = `Error: ${e.message}`;
+        hint.style.display = 'block';
+    });
+}
+
 function startOta() {
     if (!currentApi) return;
     const file = panel.querySelector('#ota-file').files[0];
@@ -911,13 +948,6 @@ export function initGrove(el) {
                     <option value="">Connect to load sensors...</option>
                 </select>
             </div>
-            <div class="form-row" style="margin-top:8px;font-size:13px;gap:6px;align-items:center">
-                <label>D pin</label>
-                <input type="number" id="grove-pin-d" min="0" max="50" style="width:58px;font-family:monospace">
-                <label style="margin-left:6px">D2 pin</label>
-                <input type="number" id="grove-pin-d2" min="0" max="50" style="width:58px;font-family:monospace">
-                <button id="grove-pin-save" class="secondary" style="font-size:12px;padding:4px 10px">Save</button>
-            </div>
             <div id="grove-safety" style="display:none"></div>
             <div id="grove-wiring" style="display:none;margin-top:10px"></div>
             <div class="form-row" style="margin-top:12px">
@@ -1024,17 +1054,6 @@ export function initGrove(el) {
         }).catch(e => addLog(`Error: ${e.message}`));
     };
 
-    panel.querySelector('#grove-pin-save').onclick = () => {
-        if (!currentApi) return;
-        const d  = parseInt(panel.querySelector('#grove-pin-d').value);
-        const d2 = parseInt(panel.querySelector('#grove-pin-d2').value);
-        if (isNaN(d) || isNaN(d2)) return;
-        currentApi.post('/api/grove/pins', { pin_d: d, pin_d2: d2 }).then(r => {
-            addLog(`Pins saved: D=GPIO${r.pin_d}  D2=GPIO${r.pin_d2} — reconfigure sensor`);
-            updateSafetyInfo(panel.querySelector('#grove-type').value);
-        }).catch(e => addLog(`Pin error: ${e.message}`));
-    };
-
     panel.querySelector('#grove-log-clear').onclick = () => { groveLog.length = 0; renderLog(); };
 }
 
@@ -1042,8 +1061,6 @@ export function activateGrove(api) {
     currentApi = api;
     loadSensors();
     api.get('/api/grove/config').then(r => {
-        panel.querySelector('#grove-pin-d').value  = r.pin_d;
-        panel.querySelector('#grove-pin-d2').value = r.pin_d2;
         if (r.sensor) {
             activeSensorId = r.sensor;
             const sel = panel.querySelector('#grove-type');

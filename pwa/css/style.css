@@ -22,6 +22,7 @@ html, body {
     background: var(--bg);
     color: var(--text);
     overflow: hidden;
+    overscroll-behavior: none;
     -webkit-user-select: none; user-select: none;
 }
 
