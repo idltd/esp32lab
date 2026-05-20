@@ -24,4 +24,4 @@
 #define GROVE_D2_PIN   3    // Secondary data pin (HC-SR04 echo, rotary DT)
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION   "1.8.2"
+#define FIRMWARE_VERSION   "1.9.1"

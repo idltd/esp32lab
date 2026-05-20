@@ -119,6 +119,7 @@ body { display: flex; flex-direction: column; }
     flex: 1;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: none;
 }
 
 .tab-panel { display: none; padding: 14px; }
