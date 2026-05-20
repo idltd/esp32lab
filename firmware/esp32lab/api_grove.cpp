@@ -1,7 +1,9 @@
 #include "config.h"
 #include "api_server.h"
 #include "api_grove.h"
+#include "board.h"
 #include <Arduino.h>
+#include <Preferences.h>
 #include <DHTesp.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
@@ -235,10 +237,31 @@ static String takeReading() {
 }
 
 // ============================================================================
+// Pin persistence
+// ============================================================================
+
+static void loadPins() {
+    Preferences prefs;
+    prefs.begin("grove", true);
+    groveD  = prefs.getInt("pin_d",  GROVE_D_PIN);
+    groveD2 = prefs.getInt("pin_d2", GROVE_D2_PIN);
+    prefs.end();
+}
+
+static void savePins(int d, int d2) {
+    Preferences prefs;
+    prefs.begin("grove", false);
+    prefs.putInt("pin_d",  d);
+    prefs.putInt("pin_d2", d2);
+    prefs.end();
+}
+
+// ============================================================================
 // API endpoints
 // ============================================================================
 
 void setupGroveApi() {
+    loadPins();
     groveEvents = new AsyncEventSource("/api/grove/stream");
     groveEvents->onConnect([](AsyncEventSourceClient* client) {
         client->send("connected", "status", millis(), 1000);
@@ -347,6 +370,42 @@ void setupGroveApi() {
             } else {
                 ApiServer::sendError(req, 400, "Active sensor is not an output type");
             }
+        }
+    );
+
+    // POST /api/grove/pins
+    apiServer.http().on("/api/grove/pins", HTTP_POST,
+        [](AsyncWebServerRequest* req) {},
+        nullptr,
+        [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+            JsonDocument doc;
+            if (deserializeJson(doc, data, len)) {
+                ApiServer::sendError(req, 400, "Invalid JSON"); return;
+            }
+            if (!doc.containsKey("pin_d") || !doc.containsKey("pin_d2")) {
+                ApiServer::sendError(req, 400, "pin_d and pin_d2 required"); return;
+            }
+            int d  = doc["pin_d"];
+            int d2 = doc["pin_d2"];
+            if (d < 0 || d > boardGpioMax() || d2 < 0 || d2 > boardGpioMax()) {
+                ApiServer::sendError(req, 400, "Pin out of range"); return;
+            }
+            if (d == d2) {
+                ApiServer::sendError(req, 400, "pin_d and pin_d2 must differ"); return;
+            }
+            if (boardPinReserved(d) || boardPinReserved(d2)) {
+                ApiServer::sendError(req, 400, "Pin is reserved by the system"); return;
+            }
+            teardownSensor();
+            groveD  = d;
+            groveD2 = d2;
+            savePins(d, d2);
+            JsonDocument resp;
+            resp["pin_d"]  = groveD;
+            resp["pin_d2"] = groveD2;
+            String json; serializeJson(resp, json);
+            ApiServer::restRequestCount++;
+            req->send(200, "application/json", json);
         }
     );
 

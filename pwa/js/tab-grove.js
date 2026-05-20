@@ -15,9 +15,15 @@ export function initGrove(el) {
                     <option value="">Connect to load sensors...</option>
                 </select>
             </div>
+            <div class="form-row" style="margin-top:8px;font-size:13px;gap:6px;align-items:center">
+                <label>D pin</label>
+                <input type="number" id="grove-pin-d" min="0" max="50" style="width:58px;font-family:monospace">
+                <label style="margin-left:6px">D2 pin</label>
+                <input type="number" id="grove-pin-d2" min="0" max="50" style="width:58px;font-family:monospace">
+                <button id="grove-pin-save" class="secondary" style="font-size:12px;padding:4px 10px">Save</button>
+            </div>
             <div id="grove-safety" style="display:none"></div>
             <div id="grove-wiring" style="display:none;margin-top:10px"></div>
-            <div id="grove-pins" style="margin-top:8px;font-size:13px;color:var(--text-dim);font-family:monospace"></div>
             <div class="form-row" style="margin-top:12px">
                 <button id="grove-cfg-btn">Configure Sensor</button>
             </div>
@@ -122,6 +128,17 @@ export function initGrove(el) {
         }).catch(e => addLog(`Error: ${e.message}`));
     };
 
+    panel.querySelector('#grove-pin-save').onclick = () => {
+        if (!currentApi) return;
+        const d  = parseInt(panel.querySelector('#grove-pin-d').value);
+        const d2 = parseInt(panel.querySelector('#grove-pin-d2').value);
+        if (isNaN(d) || isNaN(d2)) return;
+        currentApi.post('/api/grove/pins', { pin_d: d, pin_d2: d2 }).then(r => {
+            addLog(`Pins saved: D=GPIO${r.pin_d}  D2=GPIO${r.pin_d2} — reconfigure sensor`);
+            updateSafetyInfo(panel.querySelector('#grove-type').value);
+        }).catch(e => addLog(`Pin error: ${e.message}`));
+    };
+
     panel.querySelector('#grove-log-clear').onclick = () => {
         groveLog.length = 0;
         renderLog();
@@ -132,6 +149,8 @@ export function activateGrove(api) {
     currentApi = api;
     loadSensors();
     api.get('/api/grove/config').then(r => {
+        panel.querySelector('#grove-pin-d').value  = r.pin_d;
+        panel.querySelector('#grove-pin-d2').value = r.pin_d2;
         if (r.sensor) {
             activeSensorId = r.sensor;
             const sel = panel.querySelector('#grove-type');
@@ -168,18 +187,15 @@ function loadSensors() {
 function updateSafetyInfo(id) {
     const safetyEl = panel.querySelector('#grove-safety');
     const wiringEl = panel.querySelector('#grove-wiring');
-    const pinsEl   = panel.querySelector('#grove-pins');
     if (!id) {
         safetyEl.style.display = 'none';
         wiringEl.style.display = 'none';
-        pinsEl.textContent = '';
         return;
     }
     const s = sensors.find(x => x.id === id);
     if (!s) return;
 
     const renderWiring = (d, d2) => {
-        pinsEl.textContent = `D = GPIO${d}` + (s.uses_d2 ? `   |   D2 = GPIO${d2}` : '');
         wiringEl.innerHTML = buildWiringGuide(id, d, d2);
         wiringEl.style.display = '';
     };
@@ -187,7 +203,7 @@ function updateSafetyInfo(id) {
     if (currentApi) {
         currentApi.get('/api/grove/config')
             .then(r => renderWiring(r.pin_d, r.pin_d2))
-            .catch(() => renderWiring(4, 5));
+            .catch(() => renderWiring(4, 3));
     } else {
         renderWiring(4, 5);
     }
