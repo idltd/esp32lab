@@ -208,3 +208,7 @@ MANUAL.md             End-user kit manual
 3. Add its wiring guide to `buildWiringGuide()` in `pwa/js/tab-grove.js`
 4. Re-embed the updated JS into `api_webapp.cpp` (FILE_GROVE_JS section)
 5. Run `build.bat` and flash
+
+## Licence
+
+[AGPL-3.0-or-later](LICENSE) -- free to use, modify, and distribute. If you run this as a network service, you must make the source available to users.
