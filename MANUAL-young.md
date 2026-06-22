@@ -49,7 +49,9 @@ The board creates its own WiFi network. Find it on your phone, tablet, or laptop
 
 ### Step 3: Open the browser
 
-Open Chrome, Firefox, or Safari and go to:
+On most phones, a page pops up automatically as soon as you connect to the board's WiFi — you'll be taken straight to the ESP32 Lab.
+
+If that doesn't happen, open Chrome, Firefox, or Safari and go to:
 
 **http://192.168.4.1**
 
@@ -80,7 +82,7 @@ If it ever can't find your WiFi, it automatically goes back to hotspot mode — 
 
 At the top there are three tabs:
 
-**System** — tells you about the board itself (memory, WiFi, uptime). Also where you can update the firmware.
+**System** — tells you about the board itself (memory, WiFi, uptime). Also where you can update the firmware and change which pins the sensors use (Grove Pins).
 
 **GPIO** — lets you control individual pins on the board directly. More on this in Part 4.
 
@@ -228,6 +230,7 @@ The app automatically shows only the pins that are safe to use. Some pins on the
 |-----------------|-------------------|-------------|
 | Can't see the ESP32Lab WiFi | Board not powered, or still starting up | Wait 5 seconds after plugging in; check the cable |
 | Browser won't load the page | Phone switched back to mobile data | Turn off mobile data; check you're on ESP32Lab WiFi |
+| Need to wipe the saved WiFi and start over | Wrong password saved, or moved to a different network | Triple-click the BOOT button within 2 seconds — the board resets and goes back to hotspot mode |
 | Sensor shows an error | Wiring mistake | Check the wiring guide; make sure VCC is on 3.3V not 5V |
 | DHT11 keeps erroring | DATA wire not connected | Check all three wires |
 | DS18B20 "not found" | Missing 4.7kΩ resistor | Add the resistor between 3.3V and the DATA wire |

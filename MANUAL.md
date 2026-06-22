@@ -1,6 +1,6 @@
 # ESP32 Lab — Kit Manual
 
-**Version 1.6.0**
+**Version 1.9.2**
 
 ---
 
@@ -43,14 +43,16 @@ On your phone, tablet, or laptop, go to WiFi settings and connect to:
 
 | | |
 |--|--|
-| **Network name** | `ESP32Lab` |
+| **Network name** | `ESP32Lab_XXXX` (the last four characters are unique to your board) |
 | **Password** | `esp32lab` |
 
 > **Phone users:** After connecting, your phone may warn you that this network has no internet access. That is normal — the ESP32 Lab does not connect to the internet. If your phone asks whether to "stay connected", choose yes. You may also need to turn off mobile data temporarily, otherwise your phone will keep using 4G/5G instead of the ESP32's WiFi.
 
 ### Step 3: Open the browser
 
-Open any web browser (Chrome, Firefox, Safari) and go to:
+On most phones and tablets, a captive portal page appears automatically as soon as you connect to the hotspot — you will be taken straight to the ESP32 Lab interface without needing to type anything.
+
+If that does not happen, open any web browser (Chrome, Firefox, Safari) and go to:
 
 **http://192.168.4.1**
 
@@ -105,6 +107,7 @@ The interface has three tabs:
 
 **System** — shows information about the ESP32 board: chip model, memory usage, uptime, and WiFi status. Also contains:
 - **Device** — rename the board, set the LED pin, and flash the identify LED to confirm which physical device you are talking to
+- **Grove Pins** — change which GPIO pins are used for sensors without reflashing
 - **WiFi Configuration** — join or leave a WiFi network without reflashing
 - **Firmware Update** — upload a new `.bin` file over WiFi (OTA)
 
@@ -348,10 +351,19 @@ with requests.get(url, stream=True) as resp:
 
 ### Changing the sensor pins
 
-Edit `firmware/esp32lab/config.h`:
+The easiest way is via the browser — no reflashing needed:
+
+1. Open the **System** tab
+2. Find the **Grove Pins** card
+3. Enter the GPIO numbers you want for D and D2
+4. Click **Save**, then go to the Sensors tab and re-configure your sensor
+
+The new pin assignments are stored in NVS and survive reboots and OTA updates.
+
+To change the compile-time defaults (what the board uses if no pins have been saved), edit `firmware/esp32lab/config.h`:
 ```cpp
 #define GROVE_D_PIN    4    // primary sensor pin
-#define GROVE_D2_PIN   5    // secondary (HC-SR04 echo, rotary DT)
+#define GROVE_D2_PIN   3    // secondary (HC-SR04 echo, rotary DT)
 ```
 
 Any GPIO number valid for your board can be used. Rebuild and reflash after changing.
@@ -414,7 +426,9 @@ A future improvement would be a script to automate this embedding step.
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
 | Can't find ESP32Lab WiFi | Board not powered, or still booting | Wait 5 seconds after plugging in; check USB cable |
+| Forgot your board's SSID suffix | Need to identify the network | Connect via USB and open the serial monitor — the SSID is printed on boot; or check your router's device list |
 | Browser shows "Network error" | Phone switched back to mobile data | Turn off mobile data; stay on ESP32Lab WiFi |
+| Need to reset WiFi credentials | Forgot password or network moved | Triple-click the BOOT button within 2 seconds — this clears saved credentials and restarts in hotspot mode |
 | Sensor shows error message | Wiring mistake | Recheck the wiring guide; check that VCC is on 3.3V not 5V |
 | DHT11 keeps erroring | DATA wire not connected, or no pull-up | Check connection; breakout modules include pull-up, bare sensor needs 10kΩ |
 | DS18B20 "sensor not found" | Missing 4.7kΩ pull-up resistor | Add resistor between 3.3V and DATA wire |
