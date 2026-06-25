@@ -1263,6 +1263,10 @@ button:active{opacity:.8}
 .tg-grp{display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--bd)}
 input[type=range]{flex:1;accent-color:var(--ac)}
 .hidden{display:none!important}
+.log{max-height:200px;overflow-y:auto;font-size:12px;font-family:monospace;margin-top:8px}
+.log-entry{padding:5px 8px;border-bottom:1px solid var(--s2);line-height:1.4}
+.log-entry:last-child{border-bottom:none}
+.log-time{color:var(--dim);margin-right:8px}
 </style>
 </head>
 <body>
@@ -1299,13 +1303,27 @@ input[type=range]{flex:1;accent-color:var(--ac)}
       <button id="pset">Set</button>
     </div>
   </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+      <span class="lbl" style="margin:0;flex:1">Log</span>
+      <button id="logclr" class="sec" style="padding:4px 10px;font-size:12px">Clear</button>
+    </div>
+    <div id="log" class="log"><div style="color:var(--dim);padding:8px">No readings yet</div></div>
+  </div>
 </div>
 <script>
 'use strict';
-let sensors=[], sse=null, streaming=false, dval=0, pinD=4, pinD2=3;
+let sensors=[], sse=null, streaming=false, dval=0, pinD=4, pinD2=3, log=[];
 const $=id=>document.getElementById(id);
 const conn=$('conn'), sel=$('sel'), safety=$('safety'), wiring=$('wiring');
-const val=$('val'), dout=$('dout'), pwm=$('pwm');
+const val=$('val'), dout=$('dout'), pwm=$('pwm'), logEl=$('log');
+
+function addLog(msg) {
+  log.unshift({t:new Date().toLocaleTimeString(),msg});
+  if (log.length>100) log.pop();
+  logEl.innerHTML = log.map(e=>`<div class="log-entry"><span class="log-time">${e.t}</span>${e.msg}</div>`).join('');
+}
+$('logclr').onclick=()=>{ log=[]; logEl.innerHTML='<div style="color:var(--dim);padding:8px">No readings yet</div>'; };
 
 async function apiFetch(path, opts) {
   const r = await fetch(path, {signal:AbortSignal.timeout(5000), ...opts});
@@ -1355,20 +1373,22 @@ $('cfg').addEventListener('click', async () => {
     dout.classList.toggle('hidden', id!=='digital_out');
     pwm.classList.toggle('hidden', id!=='pwm_out');
     val.textContent='Ready'; val.style.color='var(--ac)';
-  } catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; }
+    addLog('Configured: '+r.name+' on GPIO'+r.pin_d+(r.uses_d2?' + GPIO'+r.pin_d2:''));
+  } catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; addLog('Error: '+e.message); }
 });
 
 $('rd').addEventListener('click', async () => {
-  try { showVal(await apiFetch('/api/grove/read')); }
-  catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; }
+  try { const r=await apiFetch('/api/grove/read'); showVal(r); addLog(valText(r)); }
+  catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; addLog('Error: '+e.message); }
 });
 
 $('st').addEventListener('click', ()=>{ streaming ? stopStream() : startStream(); });
 function startStream() {
   streaming=true; $('st').textContent='■ Stop'; $('st').classList.remove('sec');
+  addLog('Stream started');
   sse=new EventSource('/api/grove/stream');
-  sse.addEventListener('reading', e=>showVal(JSON.parse(e.data)));
-  sse.onerror=()=>stopStream();
+  sse.addEventListener('reading', e=>{ const r=JSON.parse(e.data); showVal(r); addLog(valText(r)); });
+  sse.onerror=()=>{ stopStream(); addLog('Stream closed'); };
 }
 function stopStream() {
   if (sse) { sse.close(); sse=null; }
@@ -1387,9 +1407,8 @@ $('pset').onclick=async()=>{
   catch(e) { val.textContent='Error: '+e.message; }
 };
 
-function showVal(r) {
-  val.style.color = r.error ? 'var(--rd)' : 'var(--ac)';
-  if (r.error) { val.textContent=r.error; return; }
+function valText(r) {
+  if (r.error) return 'Error: '+r.error;
   const p=[];
   if (r.temperature!==undefined) p.push(r.temperature+'°C');
   if (r.humidity!==undefined)    p.push(r.humidity+'% RH');
@@ -1398,7 +1417,11 @@ function showVal(r) {
   else if (r.value!==undefined)  p.push(r.value?'HIGH':'LOW');
   if (r.raw!==undefined)         p.push('raw: '+r.raw);
   if (r.note!==undefined)        p.push(r.note);
-  val.textContent = p.join('  |  ')||'—';
+  return p.join(' | ')||'—';
+}
+function showVal(r) {
+  val.style.color = r.error ? 'var(--rd)' : 'var(--ac)';
+  val.textContent = r.error ? r.error : (valText(r)||'—');
 }
 
 function buildWiring(id) {
