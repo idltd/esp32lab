@@ -1264,9 +1264,11 @@ button:active{opacity:.8}
 input[type=range]{flex:1;accent-color:var(--ac)}
 .hidden{display:none!important}
 .log{max-height:200px;overflow-y:auto;font-size:12px;font-family:monospace;margin-top:8px}
-.log-entry{padding:5px 8px;border-bottom:1px solid var(--s2);line-height:1.4}
+.log-entry{padding:5px 8px;border-bottom:1px solid var(--s2);line-height:1.4;display:flex;gap:6px;align-items:baseline}
 .log-entry:last-child{border-bottom:none}
-.log-time{color:var(--dim);margin-right:8px}
+.log-time{color:var(--dim);flex-shrink:0}
+.log-msg{flex:1}
+.log-dur{color:var(--ac);flex-shrink:0;font-size:11px}
 </style>
 </head>
 <body>
@@ -1288,6 +1290,7 @@ input[type=range]{flex:1;accent-color:var(--ac)}
     <div class="row">
       <button id="rd">Read Once</button>
       <button id="st" class="sec">&#9654; Stream</button>
+      <button id="ct" class="sec">&#9203; Poll</button>
     </div>
     <div id="dout" class="row hidden">
       <div class="tg-grp">
@@ -1313,17 +1316,28 @@ input[type=range]{flex:1;accent-color:var(--ac)}
 </div>
 <script>
 'use strict';
-let sensors=[], sse=null, streaming=false, dval=0, pinD=4, pinD2=3, log=[];
+let sensors=[], sse=null, streaming=false, dval=0, pinD=4, pinD2=3;
+let log=[], contInterval=null, prevKey=null, stateStart=null;
 const $=id=>document.getElementById(id);
 const conn=$('conn'), sel=$('sel'), safety=$('safety'), wiring=$('wiring');
 const val=$('val'), dout=$('dout'), pwm=$('pwm'), logEl=$('log');
 
-function addLog(msg) {
-  log.unshift({t:new Date().toLocaleTimeString(),msg});
-  if (log.length>100) log.pop();
-  logEl.innerHTML = log.map(e=>`<div class="log-entry"><span class="log-time">${e.t}</span>${e.msg}</div>`).join('');
+function renderLog() {
+  if (!log.length) { logEl.innerHTML='<div style="color:var(--dim);padding:8px">No readings yet</div>'; return; }
+  const now = Date.now();
+  logEl.innerHTML = log.map(e => {
+    const dur = e.live
+      ? `<span class="log-dur">${((now-e.ms)/1000).toFixed(1)}s ▶</span>`
+      : e.durS !== undefined ? `<span class="log-dur">${e.durS}s</span>` : '';
+    return `<div class="log-entry"><span class="log-time">${e.t}</span><span class="log-msg">${e.msg}</span>${dur}</div>`;
+  }).join('');
 }
-$('logclr').onclick=()=>{ log=[]; logEl.innerHTML='<div style="color:var(--dim);padding:8px">No readings yet</div>'; };
+function addLog(msg) {
+  log.unshift({t:new Date().toLocaleTimeString(), msg, ms:Date.now()});
+  if (log.length>100) log.pop();
+  renderLog();
+}
+$('logclr').onclick=()=>{ log=[]; prevKey=null; stateStart=null; renderLog(); };
 
 async function apiFetch(path, opts) {
   const r = await fetch(path, {signal:AbortSignal.timeout(5000), ...opts});
@@ -1384,6 +1398,7 @@ $('rd').addEventListener('click', async () => {
 
 $('st').addEventListener('click', ()=>{ streaming ? stopStream() : startStream(); });
 function startStream() {
+  stopPoll();
   streaming=true; $('st').textContent='■ Stop'; $('st').classList.remove('sec');
   addLog('Stream started');
   sse=new EventSource('/api/grove/stream');
@@ -1394,6 +1409,53 @@ function stopStream() {
   if (sse) { sse.close(); sse=null; }
   streaming=false; $('st').textContent='► Stream'; $('st').classList.add('sec');
 }
+
+function startPoll() {
+  stopStream();
+  prevKey=null; stateStart=null;
+  $('ct').textContent='■ Stop'; $('ct').classList.remove('sec');
+  addLog('Polling started (300ms)');
+  contInterval=setInterval(doPoll, 300);
+}
+function stopPoll() {
+  if (contInterval) { clearInterval(contInterval); contInterval=null; }
+  // Close the live entry
+  if (log.length && log[0].live) { log[0].live=false; log[0].durS=((Date.now()-log[0].ms)/1000).toFixed(1); }
+  prevKey=null; stateStart=null;
+  $('ct').textContent='⏱ Poll'; $('ct').classList.add('sec');
+  renderLog();
+}
+async function doPoll() {
+  try {
+    const r = await apiFetch('/api/grove/read');
+    showVal(r);
+    const key = pollKey(r);
+    const now = Date.now();
+    if (prevKey===null) {
+      // First reading — open a live entry
+      prevKey=key; stateStart=now;
+      log.unshift({t:new Date().toLocaleTimeString(), msg:valText(r), ms:now, live:true});
+      if (log.length>100) log.pop();
+    } else if (key!==prevKey) {
+      // State changed — close old entry, open new
+      if (log.length && log[0].live) { log[0].live=false; log[0].durS=((now-log[0].ms)/1000).toFixed(1); }
+      prevKey=key; stateStart=now;
+      log.unshift({t:new Date().toLocaleTimeString(), msg:valText(r), ms:now, live:true});
+      if (log.length>100) log.pop();
+    }
+    renderLog();
+  } catch(e) { addLog('Error: '+e.message); }
+}
+function pollKey(r) {
+  if (r.error)               return 'err';
+  if (r.value!==undefined)   return r.value?'1':'0';
+  if (r.label!==undefined)   return r.label;
+  if (r.distance_cm!==undefined) return String(Math.round(r.distance_cm/2)*2);
+  if (r.temperature!==undefined) return r.temperature+','+r.humidity;
+  if (r.raw!==undefined)     return String(Math.round(r.raw/50)*50);
+  return valText(r);
+}
+$('ct').addEventListener('click', ()=>{ contInterval ? stopPoll() : startPoll(); });
 
 $('lo').onclick=()=>{ dval=0; $('lo').classList.add('act'); $('hi').classList.remove('act'); };
 $('hi').onclick=()=>{ dval=1; $('hi').classList.add('act'); $('lo').classList.remove('act'); };
