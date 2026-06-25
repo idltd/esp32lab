@@ -1316,8 +1316,8 @@ input[type=range]{flex:1;accent-color:var(--ac)}
 </div>
 <script>
 'use strict';
-let sensors=[], sse=null, streaming=false, dval=0, pinD=4, pinD2=3;
-let log=[], contInterval=null, prevKey=null, stateStart=null;
+let sensors=[], dval=0, pinD=4, pinD2=3;
+let log=[], contInterval=null, pollInterval=null, prevKey=null, stateStart=null;
 const $=id=>document.getElementById(id);
 const conn=$('conn'), sel=$('sel'), safety=$('safety'), wiring=$('wiring');
 const val=$('val'), dout=$('dout'), pwm=$('pwm'), logEl=$('log');
@@ -1396,66 +1396,65 @@ $('rd').addEventListener('click', async () => {
   catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; addLog('Error: '+e.message); }
 });
 
-$('st').addEventListener('click', ()=>{ streaming ? stopStream() : startStream(); });
+// ── Stream: state-change continuous, 300ms, live timer ───────────────────────
+$('st').addEventListener('click', ()=>{ contInterval ? stopStream() : startStream(); });
 function startStream() {
   stopPoll();
-  streaming=true; $('st').textContent='■ Stop'; $('st').classList.remove('sec');
-  addLog('Stream started');
-  sse=new EventSource('/api/grove/stream');
-  sse.addEventListener('reading', e=>{ const r=JSON.parse(e.data); showVal(r); addLog(valText(r)); });
-  sse.onerror=()=>{ stopStream(); addLog('Stream closed'); };
+  prevKey=null; stateStart=null;
+  $('st').textContent='■ Stop'; $('st').classList.remove('sec');
+  addLog('Streaming…');
+  contInterval=setInterval(doStream, 300);
 }
 function stopStream() {
-  if (sse) { sse.close(); sse=null; }
-  streaming=false; $('st').textContent='► Stream'; $('st').classList.add('sec');
-}
-
-function startPoll() {
-  stopStream();
-  prevKey=null; stateStart=null;
-  $('ct').textContent='■ Stop'; $('ct').classList.remove('sec');
-  addLog('Polling started (300ms)');
-  contInterval=setInterval(doPoll, 300);
-}
-function stopPoll() {
   if (contInterval) { clearInterval(contInterval); contInterval=null; }
-  // Close the live entry
   if (log.length && log[0].live) { log[0].live=false; log[0].durS=((Date.now()-log[0].ms)/1000).toFixed(1); }
-  prevKey=null; stateStart=null;
-  $('ct').textContent='⏱ Poll'; $('ct').classList.add('sec');
+  prevKey=null;
+  $('st').textContent='► Stream'; $('st').classList.add('sec');
   renderLog();
 }
-async function doPoll() {
+async function doStream() {
   try {
-    const r = await apiFetch('/api/grove/read');
-    showVal(r);
-    const key = pollKey(r);
-    const now = Date.now();
+    const r=await apiFetch('/api/grove/read'); showVal(r);
+    const key=stateKey(r), now=Date.now();
     if (prevKey===null) {
-      // First reading — open a live entry
-      prevKey=key; stateStart=now;
+      prevKey=key;
       log.unshift({t:new Date().toLocaleTimeString(), msg:valText(r), ms:now, live:true});
       if (log.length>100) log.pop();
     } else if (key!==prevKey) {
-      // State changed — close old entry, open new
       if (log.length && log[0].live) { log[0].live=false; log[0].durS=((now-log[0].ms)/1000).toFixed(1); }
-      prevKey=key; stateStart=now;
+      prevKey=key;
       log.unshift({t:new Date().toLocaleTimeString(), msg:valText(r), ms:now, live:true});
       if (log.length>100) log.pop();
     }
     renderLog();
   } catch(e) { addLog('Error: '+e.message); }
 }
-function pollKey(r) {
-  if (r.error)               return 'err';
-  if (r.value!==undefined)   return r.value?'1':'0';
-  if (r.label!==undefined)   return r.label;
-  if (r.distance_cm!==undefined) return String(Math.round(r.distance_cm/2)*2);
-  if (r.temperature!==undefined) return r.temperature+','+r.humidity;
-  if (r.raw!==undefined)     return String(Math.round(r.raw/50)*50);
+function stateKey(r) {
+  if (r.error)                     return 'err';
+  if (r.value!==undefined)         return r.value?'1':'0';
+  if (r.label!==undefined)         return r.label;
+  if (r.distance_cm!==undefined)   return String(Math.round(r.distance_cm/2)*2);
+  if (r.temperature!==undefined)   return r.temperature+','+r.humidity;
+  if (r.raw!==undefined)           return String(Math.round(r.raw/50)*50);
   return valText(r);
 }
-$('ct').addEventListener('click', ()=>{ contInterval ? stopPoll() : startPoll(); });
+
+// ── Poll: simple read every second, logs every reading ───────────────────────
+$('ct').addEventListener('click', ()=>{ pollInterval ? stopPoll() : startPoll(); });
+function startPoll() {
+  stopStream();
+  $('ct').textContent='■ Stop'; $('ct').classList.remove('sec');
+  addLog('Polling…');
+  pollInterval=setInterval(doPoll, 1000);
+}
+function stopPoll() {
+  if (pollInterval) { clearInterval(pollInterval); pollInterval=null; }
+  $('ct').textContent='⏱ Poll'; $('ct').classList.add('sec');
+}
+async function doPoll() {
+  try { const r=await apiFetch('/api/grove/read'); showVal(r); addLog(valText(r)); }
+  catch(e) { addLog('Error: '+e.message); }
+}
 
 $('lo').onclick=()=>{ dval=0; $('lo').classList.add('act'); $('hi').classList.remove('act'); };
 $('hi').onclick=()=>{ dval=1; $('hi').classList.add('act'); $('lo').classList.remove('act'); };
