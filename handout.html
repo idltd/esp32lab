@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ESP32 Lab — Sensor Quick Reference</title>
+<style>
+@page { size: A4; margin: 12mm 14mm; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11pt;
+    color: #111;
+    background: #fff;
+}
+
+/* ── Header ── */
+.page-header {
+    background: #0f172a;
+    color: #38bdf8;
+    padding: 10px 14px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 10px;
+}
+.page-header h1 { font-size: 16pt; font-weight: 700; }
+.page-header .sub { font-size: 10pt; color: #94a3b8; }
+.connect-note {
+    background: #f0f9ff;
+    border-left: 4px solid #38bdf8;
+    padding: 6px 10px;
+    font-size: 10pt;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+.connect-note strong { color: #0369a1; }
+
+/* ── Sensor grid ── */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+.sensor {
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    overflow: hidden;
+    break-inside: avoid;
+}
+.sensor-head {
+    padding: 6px 10px;
+    font-weight: 700;
+    font-size: 10.5pt;
+    color: #fff;
+}
+.sensor-head.blue   { background: #0369a1; }
+.sensor-head.green  { background: #15803d; }
+.sensor-head.purple { background: #7c3aed; }
+.sensor-head.amber  { background: #b45309; }
+.sensor-head.slate  { background: #475569; }
+.sensor-head small { font-weight: 400; font-size: 9pt; opacity: 0.85; }
+
+.sensor-body { padding: 7px 10px; }
+
+/* ── Wiring table ── */
+table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 5px; }
+th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.4px;
+     color: #64748b; padding: 2px 6px; border-bottom: 1px solid #e2e8f0; }
+td { padding: 4px 6px; border-bottom: 1px solid #f1f5f9; font-family: 'Courier New', monospace; }
+tr:last-child td { border-bottom: none; }
+.sp { color: #92400e; }
+.arr { color: #94a3b8; padding: 0 4px; font-family: Arial, sans-serif; }
+.ep { color: #166534; font-weight: 600; }
+
+.note {
+    font-size: 9pt;
+    color: #475569;
+    line-height: 1.45;
+    background: #f8fafc;
+    border-radius: 4px;
+    padding: 5px 7px;
+}
+.note strong { color: #dc2626; }
+.note .ok { color: #166534; font-weight: 600; }
+
+/* ── Voltage divider diagram ── */
+.divider {
+    font-family: 'Courier New', monospace;
+    font-size: 8.5pt;
+    color: #334155;
+    background: #f8fafc;
+    padding: 5px 8px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+/* ── PIR callouts ── */
+.pir-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 5px; }
+.pir-item { background: #fefce8; border: 1px solid #fde047; border-radius: 4px; padding: 4px 6px; font-size: 8.5pt; }
+.pir-item strong { display: block; color: #854d0e; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.3px; }
+
+/* ── Footer ── */
+footer {
+    border-top: 2px solid #0f172a;
+    margin-top: 8px;
+    padding-top: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 9pt;
+}
+footer h4 { font-size: 9pt; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 4px; }
+.links a { display: block; color: #0369a1; text-decoration: none; margin-bottom: 2px; font-size: 9pt; }
+.contact-block { color: #334155; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>ESP32 Lab</h1>
+  <span class="sub">Sensor Quick Reference &mdash; v1.10.0</span>
+</div>
+
+<div class="connect-note">
+  <strong>Connect:</strong> Join <strong>ESP32Lab</strong> WiFi (password: <strong>esp32lab</strong>) &rarr; open <strong>http://192.168.4.1</strong>
+  &nbsp;&nbsp;|&nbsp;&nbsp; On your home network: use the IP shown in your router, or <strong>http://esp32lab-XXXX.local/</strong>
+  &nbsp;&nbsp;|&nbsp;&nbsp; Default sensor pins: <strong>D&nbsp;=&nbsp;GPIO&nbsp;4</strong>, <strong>D2&nbsp;=&nbsp;GPIO&nbsp;3</strong>
+</div>
+
+<!-- Row 1: Distance + Temp/Humidity -->
+<div class="grid">
+
+  <div class="sensor">
+    <div class="sensor-head blue">HC-SR04 &mdash; Ultrasonic Distance <small>(5V version)</small></div>
+    <div class="sensor-body">
+      <table>
+        <tr><th>Sensor</th><th></th><th>ESP32</th></tr>
+        <tr><td class="sp">VCC</td><td class="arr">&rarr;</td><td class="ep">5V (USB/VIN pin)</td></tr>
+        <tr><td class="sp">GND</td><td class="arr">&rarr;</td><td class="ep">GND</td></tr>
+        <tr><td class="sp">TRIG</td><td class="arr">&rarr;</td><td class="ep">GPIO 4 (direct)</td></tr>
+        <tr><td class="sp">ECHO</td><td class="arr">&rarr;</td><td class="ep">GPIO 3 via divider &darr;</td></tr>
+      </table>
+      <div class="divider">ECHO ──┬── GPIO 3
+       │
+      10k&#937;
+       │
+      ┴  (10k+20k divider)
+      20k&#937;   gives 3.3V from 5V
+       │
+      GND</div>
+      <div class="note"><strong>5V ECHO pin will damage the ESP32 if connected directly.</strong>
+      Voltage divider: 10k&#937; from ECHO to GPIO&nbsp;3, then 20k&#937; from GPIO&nbsp;3 to GND.
+      TRIG is fine direct &mdash; it is an input on the sensor and accepts 3.3V logic.</div>
+    </div>
+  </div>
+
+  <div class="sensor">
+    <div class="sensor-head green">DHT11 &mdash; Temperature &amp; Humidity</div>
+    <div class="sensor-body">
+      <table>
+        <tr><th>Sensor</th><th></th><th>ESP32</th></tr>
+        <tr><td class="sp">VCC</td><td class="arr">&rarr;</td><td class="ep">3.3V</td></tr>
+        <tr><td class="sp">GND</td><td class="arr">&rarr;</td><td class="ep">GND</td></tr>
+        <tr><td class="sp">DATA</td><td class="arr">&rarr;</td><td class="ep">GPIO 4</td></tr>
+      </table>
+      <div class="note">
+        <span class="ok">&#10003; 3.3V safe &mdash; connect directly.</span><br>
+        Temperature &plusmn;2&deg;C &nbsp;|&nbsp; Humidity &plusmn;5% RH &nbsp;|&nbsp; 1 reading/sec max.<br>
+        Uses a <strong style="color:#166534">single-wire serial protocol</strong> &mdash; all data
+        travels on one wire using its own timed bit-banging protocol (not I&sup2;C or UART).
+        Breakout modules include a built-in pull-up resistor; bare sensors need 10k&#937; DATA&rarr;3.3V.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Row 2: PIR + PWM + Digital -->
+<div class="grid three">
+
+  <div class="sensor">
+    <div class="sensor-head purple">PIR &mdash; Motion Sensor <small>(as Digital Input)</small></div>
+    <div class="sensor-body">
+      <table>
+        <tr><th>Sensor</th><th></th><th>ESP32</th></tr>
+        <tr><td class="sp">VCC</td><td class="arr">&rarr;</td><td class="ep">5V (most modules)</td></tr>
+        <tr><td class="sp">GND</td><td class="arr">&rarr;</td><td class="ep">GND</td></tr>
+        <tr><td class="sp">OUT</td><td class="arr">&rarr;</td><td class="ep">GPIO 4</td></tr>
+      </table>
+      <div class="note">
+        OUT goes HIGH when motion detected, LOW after the delay period.
+        Select <strong>Digital Input</strong> in the sensor dropdown.
+      </div>
+      <div class="pir-grid">
+        <div class="pir-item">
+          <strong>Jumper H</strong>
+          Retrigger &mdash; timer resets while motion continues
+        </div>
+        <div class="pir-item">
+          <strong>Jumper L</strong>
+          Single-shot &mdash; ignores motion until delay expires
+        </div>
+        <div class="pir-item">
+          <strong>Sensitivity trim</strong>
+          Turn clockwise for longer detection range
+        </div>
+        <div class="pir-item">
+          <strong>Delay trim</strong>
+          How long OUT stays HIGH after motion stops
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sensor">
+    <div class="sensor-head amber">PWM Output <small>(LED dimming / buzzer)</small></div>
+    <div class="sensor-body">
+      <table>
+        <tr><th>Sensor</th><th></th><th>ESP32</th></tr>
+        <tr><td class="sp">Anode (+)</td><td class="arr">&rarr;</td><td class="ep">GPIO 4 via 330&#937;</td></tr>
+        <tr><td class="sp">Cathode (&minus;)</td><td class="arr">&rarr;</td><td class="ep">GND</td></tr>
+      </table>
+      <div class="note">
+        GPIO 4 &rarr; 330&#937; resistor &rarr; LED (+) &rarr; LED (&minus;) &rarr; GND.<br>
+        Duty cycle slider: 0 = off &nbsp;|&nbsp; 128 = 50% &nbsp;|&nbsp; 255 = full brightness.<br>
+        Can also drive a buzzer or relay module directly on GPIO 4.
+      </div>
+    </div>
+  </div>
+
+  <div class="sensor">
+    <div class="sensor-head slate">Digital HIGH / LOW</div>
+    <div class="sensor-body">
+      <table>
+        <tr><th colspan="3">Input (button / switch)</th></tr>
+        <tr><td class="sp">Signal</td><td class="arr">&rarr;</td><td class="ep">GPIO 4</td></tr>
+        <tr><td class="sp">Other leg</td><td class="arr">&rarr;</td><td class="ep">GND</td></tr>
+      </table>
+      <div class="note" style="margin-bottom:6px">
+        Use <strong style="color:#334155">INPUT_PULLUP</strong> mode.
+        Pin reads LOW when button pressed, HIGH when released.
+      </div>
+      <table>
+        <tr><th colspan="3">Output (LED / relay)</th></tr>
+        <tr><td class="sp">GPIO 4</td><td class="arr">&rarr;</td><td class="ep">330&#937; &rarr; LED &rarr; GND</td></tr>
+      </table>
+      <div class="note">
+        Write HIGH to turn on, LOW to turn off.
+        Works with relay modules, buzzers, indicator LEDs.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<footer>
+  <div class="contact-block">
+    <h4>Get the kit</h4>
+    <!-- EDIT: your contact details here -->
+    <div style="color:#334155;line-height:1.8">
+      [Your name / business]<br>
+      [Email or website]<br>
+      [QR code / social handle]
+    </div>
+  </div>
+  <div class="links">
+    <h4>Buy the parts (affiliate links)</h4>
+    <!-- EDIT: replace # with your Amazon affiliate URLs -->
+    <a href="#">ESP32-C3 Mini development board</a>
+    <a href="#">HC-SR04 ultrasonic distance sensor</a>
+    <a href="#">DHT11 temperature &amp; humidity module</a>
+    <a href="#">PIR motion sensor module</a>
+    <a href="#">Starter resistor &amp; LED kit</a>
+    <a href="#">Jumper wire assortment</a>
+  </div>
+</footer>
+
+</body>
+</html>

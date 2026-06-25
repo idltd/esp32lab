@@ -1222,6 +1222,231 @@ static const char FILE_MANIFEST[] = R"WEBEND({
 }
 )WEBEND";
 
+// ── Simple sensor page (served at /) ─────────────────────────────────────────
+
+static const char FILE_SIMPLE_HTML[] = R"WEBEND(<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Lab</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f172a;--s:#1e293b;--s2:#334155;--bd:#475569;--tx:#f1f5f9;--dim:#94a3b8;--ac:#38bdf8;--gn:#4ade80;--rd:#f87171}
+html,body{min-height:100%;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+body{display:flex;flex-direction:column}
+header{background:var(--s);border-bottom:2px solid var(--ac);padding:12px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand{font-size:18px;font-weight:700;color:var(--ac);flex:1}
+#conn{font-size:13px;color:var(--dim)}
+#conn.ok{color:var(--gn)}#conn.err{color:var(--rd)}
+header a{font-size:12px;color:var(--dim);text-decoration:none;padding:4px 10px;border:1px solid var(--bd);border-radius:6px}
+#wrap{padding:14px;max-width:520px;width:100%;margin:0 auto}
+.card{background:var(--s);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:14px}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--ac);margin-bottom:8px}
+select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bd);background:var(--s2);color:var(--tx);font-size:15px;margin-bottom:12px}
+#safety{font-size:13px;border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.5}
+#safety.safe{background:#0d2818;border:1px solid var(--gn)}
+#safety.warn{background:#2d1111;border:1px solid var(--rd)}
+#wiring{margin:0 0 14px}
+.wt{width:100%;border-collapse:collapse;font-size:13px}
+.wt td{padding:7px 8px;border-bottom:1px solid var(--s2);font-family:monospace}
+.wt tr:last-child td{border-bottom:none}
+.sp{color:#fbbf24}.arr{color:var(--dim);padding:0 6px;font-family:sans-serif}.ep{color:var(--gn)}
+.wnote{font-size:12px;color:var(--dim);padding:8px 10px;background:var(--s2);border-radius:6px;line-height:1.6;margin-top:6px}
+#val{font-size:28px;font-family:monospace;color:var(--ac);padding:14px 0;min-height:60px;word-break:break-all}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+button{padding:10px 20px;border-radius:8px;border:none;background:var(--ac);color:#0f172a;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap}
+button:active{opacity:.8}
+.sec{background:var(--s2);color:var(--tx);border:1px solid var(--bd);font-weight:600}
+.tg{background:var(--s2);color:var(--dim);border:none;border-radius:0;padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer}
+.tg.act{background:var(--ac);color:#0f172a}
+.tg-grp{display:flex;border-radius:8px;overflow:hidden;border:1px solid var(--bd)}
+input[type=range]{flex:1;accent-color:var(--ac)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">ESP32 Lab</span>
+  <span id="conn">Connecting&hellip;</span>
+  <a href="/advanced">Advanced &rsaquo;</a>
+</header>
+<div id="wrap">
+  <div class="card">
+    <div class="lbl">Sensor</div>
+    <select id="sel"><option value="">Connecting&hellip;</option></select>
+    <div id="safety" class="hidden"></div>
+    <div id="wiring" class="hidden"></div>
+    <button id="cfg">Configure Sensor</button>
+  </div>
+  <div class="card">
+    <div id="val">&mdash;</div>
+    <div class="row">
+      <button id="rd">Read Once</button>
+      <button id="st" class="sec">&#9654; Stream</button>
+    </div>
+    <div id="dout" class="row hidden">
+      <div class="tg-grp">
+        <button id="lo" class="tg act">LOW</button>
+        <button id="hi" class="tg">HIGH</button>
+      </div>
+      <button id="wr">Write</button>
+    </div>
+    <div id="pwm" class="row hidden">
+      <span style="font-size:13px;color:var(--dim)">Duty</span>
+      <input type="range" id="duty" min="0" max="255" value="128">
+      <span id="dv" style="font-family:monospace;min-width:28px">128</span>
+      <button id="pset">Set</button>
+    </div>
+  </div>
+</div>
+<script>
+'use strict';
+let sensors=[], sse=null, streaming=false, dval=0, pinD=4, pinD2=3;
+const $=id=>document.getElementById(id);
+const conn=$('conn'), sel=$('sel'), safety=$('safety'), wiring=$('wiring');
+const val=$('val'), dout=$('dout'), pwm=$('pwm');
+
+async function apiFetch(path, opts) {
+  const r = await fetch(path, {signal:AbortSignal.timeout(5000), ...opts});
+  if (!r.ok) throw new Error((await r.json().catch(()=>({}))).error||r.status);
+  return r.json();
+}
+
+async function init() {
+  try {
+    await apiFetch('/api/system/info');
+    conn.textContent='Connected'; conn.className='ok';
+    const d = await apiFetch('/api/grove/sensors');
+    sensors = d.sensors||[];
+    sel.innerHTML = '<option value="">Select sensor type…</option>' +
+      sensors.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    const cfg = await apiFetch('/api/grove/config').catch(()=>({}));
+    if (cfg.pin_d)  { pinD=cfg.pin_d; pinD2=cfg.pin_d2; }
+    if (cfg.sensor) { sel.value=cfg.sensor; onSel(); }
+  } catch(e) {
+    conn.textContent='Not connected'; conn.className='err';
+    sel.innerHTML='<option value="">Could not connect</option>';
+  }
+}
+
+sel.addEventListener('change', onSel);
+function onSel() {
+  const id=sel.value, s=sensors.find(x=>x.id===id);
+  if (!s) { safety.className='hidden'; wiring.className='hidden'; return; }
+  safety.className = s.gpio_safe ? 'safe' : 'warn';
+  safety.innerHTML = s.gpio_safe
+    ? `<strong style="color:var(--gn)">&#10003; Safe &mdash; ${s.vcc}</strong><br>${s.voltage_note}`
+    : `<strong style="color:var(--rd)">&#9888; Caution &mdash; ${s.vcc}</strong><br>${s.voltage_note}`;
+  wiring.innerHTML = buildWiring(id);
+  wiring.className = '';
+}
+
+$('cfg').addEventListener('click', async () => {
+  const id=sel.value; if (!id) return;
+  stopStream();
+  try {
+    const r = await apiFetch('/api/grove/configure', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({sensor:id})
+    });
+    pinD=r.pin_d; pinD2=r.pin_d2;
+    wiring.innerHTML=buildWiring(id);
+    dout.classList.toggle('hidden', id!=='digital_out');
+    pwm.classList.toggle('hidden', id!=='pwm_out');
+    val.textContent='Ready'; val.style.color='var(--ac)';
+  } catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; }
+});
+
+$('rd').addEventListener('click', async () => {
+  try { showVal(await apiFetch('/api/grove/read')); }
+  catch(e) { val.textContent='Error: '+e.message; val.style.color='var(--rd)'; }
+});
+
+$('st').addEventListener('click', ()=>{ streaming ? stopStream() : startStream(); });
+function startStream() {
+  streaming=true; $('st').textContent='■ Stop'; $('st').classList.remove('sec');
+  sse=new EventSource('/api/grove/stream');
+  sse.addEventListener('reading', e=>showVal(JSON.parse(e.data)));
+  sse.onerror=()=>stopStream();
+}
+function stopStream() {
+  if (sse) { sse.close(); sse=null; }
+  streaming=false; $('st').textContent='► Stream'; $('st').classList.add('sec');
+}
+
+$('lo').onclick=()=>{ dval=0; $('lo').classList.add('act'); $('hi').classList.remove('act'); };
+$('hi').onclick=()=>{ dval=1; $('hi').classList.add('act'); $('lo').classList.remove('act'); };
+$('wr').onclick=async()=>{
+  try { await apiFetch('/api/grove/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({value:dval})}); }
+  catch(e) { val.textContent='Error: '+e.message; }
+};
+$('duty').addEventListener('input', ()=>{ $('dv').textContent=$('duty').value; });
+$('pset').onclick=async()=>{
+  try { await apiFetch('/api/grove/write',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({duty:+$('duty').value})}); }
+  catch(e) { val.textContent='Error: '+e.message; }
+};
+
+function showVal(r) {
+  val.style.color = r.error ? 'var(--rd)' : 'var(--ac)';
+  if (r.error) { val.textContent=r.error; return; }
+  const p=[];
+  if (r.temperature!==undefined) p.push(r.temperature+'°C');
+  if (r.humidity!==undefined)    p.push(r.humidity+'% RH');
+  if (r.distance_cm!==undefined) p.push(r.distance_cm+' cm');
+  if (r.label!==undefined)       p.push(r.label);
+  else if (r.value!==undefined)  p.push(r.value?'HIGH':'LOW');
+  if (r.raw!==undefined)         p.push('raw: '+r.raw);
+  if (r.note!==undefined)        p.push(r.note);
+  val.textContent = p.join('  |  ')||'—';
+}
+
+function buildWiring(id) {
+  const W = {
+    digital_in: {
+      rows:[['Signal',`GPIO${pinD}`],['VCC','3.3V'],['GND','GND']],
+      note:'Button: one end to GPIO, other to GND (use INPUT_PULLUP). PIR: OUT→GPIO, VCC→5V, GND→GND. Jumper selects single/continuous fire; trims set sensitivity and delay.'
+    },
+    digital_out:{
+      rows:[['Output',`GPIO${pinD}`],['VCC','3.3V'],['GND','GND']],
+      note:'LED: GPIO → 330Ω → LED → GND. Or connect a relay or buzzer module.'
+    },
+    analog_in:{
+      rows:[['Signal',`GPIO${pinD}`],['VCC','3.3V'],['GND','GND']],
+      note:'MAX 3.3V on this pin. ADC reads 0–4095 (0V–3.3V).'
+    },
+    pwm_out:{
+      rows:[['PWM',`GPIO${pinD}`],['VCC','3.3V'],['GND','GND']],
+      note:'LED: GPIO → 330Ω → LED → GND. Duty 0 = off, 128 = 50%, 255 = full.'
+    },
+    dht11:{
+      rows:[['VCC','3.3V'],['GND','GND'],['DATA',`GPIO${pinD}`]],
+      note:'Uses a single-wire serial protocol — one wire carries all data. Breakout modules include a pull-up resistor, no extras needed.'
+    },
+    hcsr04:{
+      rows:[['VCC','5V (USB/VIN)'],['GND','GND'],['TRIG',`GPIO${pinD}`],['ECHO',`GPIO${pinD2} via divider`]],
+      note:'5V ECHO needs a voltage divider: 10kΩ from ECHO to GPIO, 20kΩ from GPIO to GND. TRIG connects direct (3.3V logic is fine).'
+    },
+    ds18b20:{
+      rows:[['VCC','3.3V'],['GND','GND'],['DATA',`GPIO${pinD}`]],
+      note:'4.7kΩ pull-up between DATA and 3.3V required.'
+    },
+    rotary:{
+      rows:[['VCC','3.3V'],['GND','GND'],['CLK',`GPIO${pinD}`],['DT',`GPIO${pinD2}`]],
+      note:'KY-040 module. SW (button) pin is not used here.'
+    },
+  };
+  const g=W[id]; if (!g) return '';
+  const rows=g.rows.map(([sp,ep])=>`<tr><td class="sp">${sp}</td><td class="arr">→</td><td class="ep">${ep}</td></tr>`).join('');
+  return `<table class="wt"><tbody>${rows}</tbody></table><div class="wnote">${g.note}</div>`;
+}
+
+init();
+</script>
+</body>
+</html>
+)WEBEND";
+
 // ── Route registration ────────────────────────────────────────────────────────
 
 static void sendCached(AsyncWebServerRequest* r, const char* mime, const char* body) {
@@ -1232,6 +1457,9 @@ static void sendCached(AsyncWebServerRequest* r, const char* mime, const char* b
 
 void setupWebApp() {
     apiServer.http().on("/", HTTP_GET, [](AsyncWebServerRequest* r){
+        r->send(200, "text/html", FILE_SIMPLE_HTML);
+    });
+    apiServer.http().on("/advanced", HTTP_GET, [](AsyncWebServerRequest* r){
         String html(FILE_INDEX);
         html.replace("{{VER}}", FIRMWARE_VERSION);
         r->send(200, "text/html", html);
