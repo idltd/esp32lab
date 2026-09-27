@@ -11,6 +11,9 @@ dist/
 # Claude Code
 .claude/
 
+# Business/strategy notes — not for the public repo
+venture-analysis.md
+
 # Windows
 Thumbs.db
 Desktop.ini
