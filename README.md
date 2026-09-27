@@ -4,6 +4,8 @@ A browser-based sensor lab for ESP32 development boards. Flash the firmware, pow
 
 Designed as a low-cost, low-risk platform for hands-on electronics learning. Everything runs locally on the device.
 
+**Parts list:** [idltd.github.io/esp32lab](https://idltd.github.io/esp32lab/) — boards, breadboard, wires and sensors (Amazon UK affiliate links; source in `docs/index.html`, served by GitHub Pages from `master` `/docs`).
+
 ---
 
 ## Supported boards
