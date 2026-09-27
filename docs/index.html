@@ -61,7 +61,15 @@ a { color: var(--accent); }
 .support strong { color: var(--text); }
 
 /* ── Gallery ── */
-.gallery { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.screens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 28px; max-width: 900px; margin-left: auto; margin-right: auto; }
+.screens figure { text-align: center; }
+.screens img {
+    width: 100%; aspect-ratio: 720 / 1350; object-fit: cover; object-position: top; display: block;
+    border: 6px solid #0b1220; border-radius: 22px; outline: 1px solid var(--line);
+    box-shadow: 0 14px 34px rgba(0,0,0,.45);
+}
+.screens figcaption { color: var(--muted); font-size: .9rem; margin-top: 10px; }
 .gallery figure { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .gallery img { width: 100%; aspect-ratio: 4 / 3.4; object-fit: cover; display: block; }
 .gallery figcaption { padding: 10px 14px; color: var(--muted); font-size: .9rem; }
@@ -107,6 +115,7 @@ footer .disclosure { margin-top: 10px; font-size: .82rem; }
     .hero { padding: 40px 0 32px; }
     .hero-grid { grid-template-columns: 1fr; }
     .gallery { grid-template-columns: 1fr; }
+    .screens { grid-template-columns: 1fr; max-width: 300px; }
     .card.feature { flex-direction: column; }
     .card.feature .pic { flex: none; }
     .support { flex-direction: column; align-items: flex-start; }
@@ -158,9 +167,19 @@ footer .disclosure { margin-top: 10px; font-size: .82rem; }
                 <img src="img/pir.jpg" alt="ESP32-C3 on a yellow mini breadboard wired to a PIR motion sensor" loading="lazy" width="1050" height="1400">
                 <figcaption>PIR motion sensor: detects people moving around the room.</figcaption>
             </figure>
+        </div>
+        <div class="screens">
             <figure>
-                <img src="img/screenshot.jpg" alt="The ESP32 Lab web UI on a tablet showing the System, GPIO and Sensors tabs and the sensor selection list" loading="lazy" width="1363" height="1400">
-                <figcaption>Pick a sensor in the browser. The lab shows you how to wire it.</figcaption>
+                <img src="img/app-list.jpg" alt="Sensor selection list in the ESP32 Lab web app on a phone" loading="lazy" width="720" height="1250">
+                <figcaption>Pick a sensor…</figcaption>
+            </figure>
+            <figure>
+                <img src="img/app-sensors.jpg" alt="Sensors tab showing a safety check, wiring table and Read Once / Stream buttons" loading="lazy" width="720" height="1350">
+                <figcaption>…follow the wiring guide, then read or stream it.</figcaption>
+            </figure>
+            <figure>
+                <img src="img/app-system.jpg" alt="System tab showing chip model, memory use and network details" loading="lazy" width="720" height="1350">
+                <figcaption>See what's going on inside the chip.</figcaption>
             </figure>
         </div>
     </section>
